@@ -1,0 +1,25 @@
+TODO:
+
+cambiar deteccion de dispositivo siendo usado
+
+
+	if(!dispositivo)
+	{
+		/* "dispositivo esta ocupado o siendo usado, use otro.. */
+		fprintf(stderr, "dispositivo : %s, id: %s tipo %s esta siendo usado.. \n", dvcname, dvcidname, dvcidtype );
+		fp_exit (); /* recuerde que por usar el api de libusb 1, solo se puede acceder a un dispositivo por instancia de referencia */
+		exit(98); /* para acceder a el bus seria con otro dispositivo, y de paso esperar se libere la interupcion */
+	}
+
+		/* configuramos la ruta para la imagen, salvando ram, mosca por si se invoca muchs veces */
+		char *homework;
+/*			homework = getenv("HOME");
+		
+		strcat(homework,"/.fprint/prints/");
+		strcat(homework,dvcidname);
+		strcat(homework,"/");
+		strcat(homework,dvcidtype);
+		strcat(homework,"/");
+		strcat(homework,nombreimagen);*/
+		homework = "pepe.pgm";
+
