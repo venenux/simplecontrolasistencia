@@ -13,6 +13,9 @@
 #include <sys/types.h>
 
 #define DIR_MIO_JODA 0750
+typedef int bool;
+#define TRUE 1
+#define FALSE 0
 
 /** main tiene soporte de argumentos, se usara para manejo de linea de comandos mas adelante */
 int main(int argc, char **argv)
@@ -20,6 +23,9 @@ int main(int argc, char **argv)
 	char *nombreimagen = "noencontrado.pgm";
 	char *numerodedo = "1"; /* LEFT THUMB ; pulgar izquierdo */
 	int operacion = 0;
+	bool interfaz = FALSE;
+	bool dummy = FALSE;
+	bool dejarpasar = FALSE;
 
 	int devresult = 1; /* usaremos esto para marcar el estado de nuestro dispositivo usandose */
 	int prg_sts = 1; /* estado en que se esta el programa, asume todo malo, se verifica en el camino todo */
@@ -27,9 +33,12 @@ int main(int argc, char **argv)
 	/* inicializacion de la libreria, carga de objetos y corroboracion de dispositivos posibles */
 	devresult = fp_init();
 	if ( devresult < 0 ) /* libreria mal enlazada o no esta instalado libfprint, instalarla con aptitude install libfprint-dev */
+	{
+		fprintf(stderr,"error");
 		exit (99);
+	}
 
-/*	fp_set_debug (3); */
+/*	fp_set_debug (3);  */
 
 	int argnm; /* manejo excluyente de argumentos, cada argumento es independiente, no dependiente */
 	for(argnm = 1; argnm < argc; argnm++) /* variables de argumentos desde main */
@@ -46,6 +55,14 @@ int main(int argc, char **argv)
 			nombreimagen = argv[argnm+1];
 		if( strcmp(argv[argnm],"finger") == 0 || strcmp(argv[argnm],"dedo") == 0 ) /* si pasa image el siguiente es el nombre de esta*/
 			numerodedo = argv[argnm+1];
+		if( strcmp(argv[argnm],"path") == 0 || strcmp(argv[argnm],"ruta") == 0) /* imprime ruta en una sola linea */
+			operacion = 3;
+		if( strcmp(argv[argnm],"frontend") == 0 || strcmp(argv[argnm],"interfaz") == 0) /* imprime info por linea, la info sale en mismo orden que sin interfaz, pero sin adornos */
+			interfaz = TRUE;
+		if( strcmp(argv[argnm],"dummy") == 0 || strcmp(argv[argnm],"postizo") == 0) /* modo engaño, emula un dispositivo, en realidad devuelve siempre evirifado/enrolado exitoso */
+			dummy = TRUE;
+		if( strcmp(argv[argnm],"dummysts") == 0 || strcmp(argv[argnm],"postizoest") == 0) /* si modo engaño, con el siguiente argumento se le dice si aceptado o rechazado */
+			dejarpasar = argv[argnm+1];
 	}/* me paseo por los argumentos pasados, y asigno setgun la palabra encontrada */
 
 	int dedousado = LEFT_THUMB; /* por defecto usamos/asignamos a libfprint dedo pulgar izquierdo */
@@ -60,47 +77,75 @@ int main(int argc, char **argv)
 	if( strcmp(numerodedo,"9") == 0) dedousado = RIGHT_RING;
 	if( strcmp(numerodedo,"10") == 0) dedousado = RIGHT_LITTLE;
 
+	
+
 	struct fp_dscv_dev **dispositivosposibles; /* arreglo de estrucutra que representa dispositivos scaners */
 	dispositivosposibles = fp_discover_devs (); /* invoco libfprint a que busque los readers de dedos */
 	if ( !dispositivosposibles ) /* libreria enlazada pero usb de computadora malo, o no encontro dispositovos conectados */
 		exit (1);
 
+
 	struct fp_dscv_dev *disposivouno; /* estructura que define dispositivo valido */
-	disposivouno = dispositivosposibles[0]; /* seleccionado el primer dispositivo de todos los encontrados */
-	if ( !disposivouno ) /*libreria enlazada, usb bueno, pero dispositivo 1 no valido, o el seleccionado primero no sirve */
-		exit (2);
+	if ( dummy == FALSE )
+	{
+		disposivouno = dispositivosposibles[0]; /* seleccionado el primer dispositivo de todos los encontrados */
+		if ( !disposivouno ) /*libreria enlazada, usb bueno, pero dispositivo 1 no valido, o el seleccionado primero no sirve */
+			exit (2);
+	}
 
 	struct fp_dev *dispositivo; /* representar el dispositivo a manejar en el codigo */
-	dispositivo = fp_dev_open (disposivouno); /* representacion del dispositivo usandose */
-	if ( !dispositivo ) /* dispositivo encontrado, pero esta bloqueado, libusb no maneja asincronos eventos */
-		exit (3);
+	if ( dummy == FALSE )
+	{
+		dispositivo = fp_dev_open (disposivouno); /* representacion del dispositivo usandose */
+		if ( !dispositivo ) /* dispositivo encontrado, pero esta bloqueado, libusb no maneja asincronos eventos */
+			exit (3);
+	}
 
 	struct fp_driver *dvc; /* abstraccion especifica del dispositivo, en el OS */
-	dvc = fp_dscv_dev_get_driver ( disposivouno ); /* identificacion del dispositivo (opcional) */
-	fp_dscv_devs_free( dispositivosposibles ); /* ya tengo el scaner, limpio el bus usb con toda la info anterior recopilada */
+	if ( dummy == FALSE )
+	{
+		dvc = fp_dscv_dev_get_driver ( disposivouno ); /* identificacion del dispositivo (opcional) */
+		fp_dscv_devs_free( dispositivosposibles ); /* ya tengo el scaner, limpio el bus usb con toda la info anterior recopilada */
+	}
 
-	uint16_t dvcid = fp_driver_get_driver_id (dvc); /* obtenemos el id del "driver" del dispositivo */
+	uint16_t dvcid;
 	char dvcidname[32];		/* este se requiere despues, para detectar la ruta de guardado de data */
-	sprintf (dvcidname, "%04X", dvcid); /* el formato para el id del driver es de 4 digitos en la ruta*/
+	if ( dummy == FALSE )
+	{
+		dvcid = fp_driver_get_driver_id (dvc); /* obtenemos el id del "driver" del dispositivo */
+		sprintf (dvcidname, "%04X", dvcid); /* el formato para el id del driver es de 4 digitos en la ruta*/
+	}
+	else
+		sprintf (dvcidname, "%04X", "9999"); /* el formato para el id del driver es de 8 digitos en la ruta*/
 
-	uint32_t dvcnu = fp_dev_get_devtype (dispositivo); /* obtenemos el id del tipo de dispositivo */
+	uint32_t dvcnu;
 	char dvcidtype[64];		/* este se requiere despues, para detectar sub ruta de guardado de data */
-	sprintf (dvcidtype, "%08X", dvcnu); /* el formato para el id del driver es de 8 digitos en la ruta*/
-	
-	/* informamos el nombre, id y devtype del dispositivo si encontramos uno */
-	unsigned char *dvcname = fp_driver_get_full_name(dvc); /* opcional: ver el nombre del scaner humanamente */
+	if ( dummy == FALSE )
+	{
+		dvcnu = fp_dev_get_devtype (dispositivo); /* obtenemos el id del tipo de dispositivo */
+		sprintf (dvcidtype, "%08X", dvcnu); /* el formato para el id del driver es de 8 digitos en la ruta*/
+	}
+	else
+		sprintf (dvcidtype, "%08X", "00000000"); /* el formato para el id del driver es de 8 digitos en la ruta*/
+
+	unsigned char *dvcname; /* para informamos el nombre, id y devtype del dispositivo si encontramos uno */
+	if ( dummy == FALSE )
+		*dvcname = fp_driver_get_full_name(dvc); /* opcional: ver el nombre del scaner humanamente */
+	else
+		dvcname = "Dummy/Falso Quien carizo eres tu finger/dedo scaner 0000";
 
 	struct fp_print_data *data_deo_tempo = NULL; /* reservo otro lugarcito para datos de manejo */
 	int r_img; /* usado para flag de resultado del operacion de imagen */
-	int r_dat; /* usado para flag status de resultado operacion data */
+	int r_dat; /* usado para flag status de resultado operacion data */	
 
-	if ( operacion == -1 )
+
+	if ( operacion == -1 ) /* opcion saber como usar esta vaina */
 	{
-		fprintf(stderr, "uso: <comando> <accion> [nombreimagen [<ruta_comp_con_nombreimagen>.pgm]] [dedo <numero>]\n");
-		fprintf(stderr, "usage: <command> <action> [image [<abs_path_with_imagename>.pgm]] [finger <number>]\n");
+		fprintf(stderr, "uso: <comando> <accion> [nombreimagen [<ruta_comp_con_nombreimagen>.pgm]] [dedo <numero>]  [postizo [postizoest]]\n");
+		fprintf(stderr, "usage: <command> <action> [image [<abs_path_with_imagename>.pgm]] [finger <number>] [dummy [dummysts TRUE/FALSE]]\n");
 		fprintf(stderr, "\n");
-		fprintf(stderr, "actions: enroll, verify\n");
-		fprintf(stderr, "acciones: enrolar, verificar\n");
+		fprintf(stderr, "actions: enroll, verify, path, frontend\n");
+		fprintf(stderr, "acciones: enrolar, verificar, ruta, interfaz\n");
 		fprintf(stderr, "finger: 1 Lefth thum to 5 lefth little and so right\n");
 		fprintf(stderr, "dedo: 1 izqu pulgar a 5 izqu pequeño y asi derecha\n");
 		fprintf(stderr, "\n");
@@ -108,33 +153,43 @@ int main(int argc, char **argv)
 		exit(prg_sts);
 	}
 
-	if ( operacion == 0 || operacion == 1 || operacion == 2 || operacion == 3 )/* dependiendo de la operacion, definimos que vamos a hacer */
-	{
+	if ( operacion == 3 ) /* opcion saber la ruta del id de la db del dispositivo */
+		if ( interfaz )
+			fprintf(stderr,".fprint/prints/%s/%s/",dvcidname, dvcidtype);
+		else
+			fprintf(stderr,"[archivos]\nruta=.fprint/prints/%s/%s/\n",dvcidname, dvcidtype);
+	
 
-		if ( operacion == 0 )
-		{
-			fprintf(stderr, "[dispositivo]\nnombre=%s\nid=%s\ntipo=%s\n", dvcname, dvcidname, dvcidtype );
-			prg_sts=0;
-			fprintf(stderr,"[error]\nsalida=%d\n",prg_sts);
-		}
+	if ( operacion == 0 || operacion == 1 || operacion == 2 )/* dependiendo de la operacion, definimos que vamos a hacer */
+	{
+		prg_sts=0; /* si pido 0 o 1, sale con exito siempre, sino cambia esta variable a un error*/
+
+		if ( operacion == 0 ) /* opcion quiero info del dispositivo */
+			if ( interfaz )
+				fprintf(stderr,"%s\n%s\n%s\n", dvcname, dvcidname, dvcidtype );
+			else
+				fprintf(stderr, "[dispositivo]\nnombre=%s\nid=%s\ntipo=%s\n", dvcname, dvcidname, dvcidtype );
 		
-		if ( operacion == 0 || operacion == 1 || operacion == 2 )
-		{
-			fprintf(stderr,"[archivos]\nnombreimagen=%s\nrutafiledata=.fprint/prints/%s/%s/%d\n",nombreimagen, dvcidname, dvcidtype, dedousado);
-			prg_sts=0;
-		}
+		if ( operacion == 0 || operacion == 1 || operacion == 2 ) /* opcion info completa en el resto de las operaciones */
+			if ( interfaz )
+				fprintf(stderr,".fprint/prints/%s/%s/\n%s\n.fprint/prints/%s/%s/%d\n",dvcidname, dvcidtype,nombreimagen, dvcidname, dvcidtype, dedousado);
+			else
+				fprintf(stderr,"[archivos]\nruta=.fprint/prints/%s/%s/\nnombreimagen=%s\nrutafiledata=.fprint/prints/%s/%s/%d\n",dvcidname, dvcidtype,nombreimagen, dvcidname, dvcidtype, dedousado);
 		
-		if ( operacion == 1 )
+		if ( operacion == 1 && dummy == FALSE )
 		{
 			do /* metemos un bucle para que espere por el escaneo una vez prendido */
 			{
 				struct fp_img *img = NULL; /* reservo un lugar para manejar la imagen, una fotico de la victima */
 
-				/* enrollar=guardar huella despues de almacenarla, por ende chekeo r_img */
+					/* enrollar=guardar huella despues de almacenarla, por ende chekeo r_img */
 				r_img = fp_enroll_finger_img ( dispositivo, &data_deo_tempo, &img ); /* en este punto se enciende el dispositivo  */
 				if ( r_img < 0 )
 				{
-					fprintf(stderr,"[error]\nsalida=%d\n",r_img);
+					if ( interfaz )
+						fprintf(stderr,"%d",r_img);
+					else
+						fprintf(stderr,"[error]\nsalida=%d\n",r_img);
 					exit(r_img);
 				}
 				r_dat = fp_print_data_save ( data_deo_tempo, dedousado );
@@ -142,19 +197,26 @@ int main(int argc, char **argv)
 				{
 					fp_img_save_to_file ( img, nombreimagen);
 					fp_img_free (img);
-					fprintf(stderr,"[imagen]\nnombre=%s\n",nombreimagen);
+					if ( interfaz == FALSE )
+						fprintf(stderr,"[imagen]\nnombre=%s\n",nombreimagen);
 				}
 				/* la variable img, su ubicacion en ram tendra datos y no sera nula si todo fue bien */
 				/* r guarda el resultado de la operacion, haya escaneado o no la imagen */
 				switch (r_img)
 				{
 					case FP_ENROLL_COMPLETE:
+						if ( interfaz )
+							fprintf(stderr,"TRUE\n0\n");
+						else
+							fprintf(stderr, "[enroll]\nstatus=TRUE\n[error]\nsalida=0\n");
 						prg_sts = 0;
-						fprintf(stderr, "[enroll]\nstatus=TRUE\n[error]\nsalida=0\n");
 						break;
 					default: /* hay mas casos pero por motivos didacticos estos son suf */
-						fprintf(stderr,"[enroll]\nstatus=FALSE\n[error]\nsalida=%d\n",r_img);
 						prg_sts = r_img;
+						if ( interfaz )
+							fprintf(stderr,"FALSE\n%d\n",r_img);
+						else
+							fprintf(stderr, "[enroll]\nstatus=FALSE\n[error]\nsalida=%d\n",r_img);
 						break;
 				}
 				if(r_dat<0) 
@@ -167,8 +229,16 @@ int main(int argc, char **argv)
 			}
 			while( r_img!= FP_ENROLL_COMPLETE ); /* el dispositivo estara esperando el dedo hasta exito o el break del case */
 		}
+		if ( operacion == 1 && dummy == TRUE )
+		{
+			if ( interfaz )
+				fprintf(stderr,"TRUE\n0\n");
+			else
+				fprintf(stderr, "[imagen]\nnombre=%s\n[enroll]\nstatus=TRUE\n[error]\nsalida=0\n",nombreimagen);
+			prg_sts = 0;
+		}
 
-		if ( operacion == 2 )
+		if ( operacion == 2 && dummy == FALSE )
 		{
 			do
 			{
@@ -178,7 +248,10 @@ int main(int argc, char **argv)
 				r_dat = fp_print_data_load ( dispositivo, dedousado, &data_deo_tempo );
 				if ( r_dat != 0 )
 				{
-					fprintf(stderr,"[error]\nsalida=%d\n",r_dat);
+					if ( interfaz )
+						fprintf(stderr,"%d\n",r_dat);
+					else
+						fprintf(stderr,"[error]\nsalida=%d\n",r_dat);
 					exit(r_dat);
 				}
 				r_img = fp_verify_finger_img ( dispositivo, data_deo_tempo, &img ); /* verifico .fprint/<id>/<device>/CUALQUIERDEDO */
@@ -188,17 +261,24 @@ int main(int argc, char **argv)
 				{
 					fp_img_save_to_file ( img, nombreimagen);
 					fp_img_free (img);
-					fprintf(stderr,"[imagen]\nnombre=%s\n",nombreimagen);
+					if ( interfaz == FALSE )
+						fprintf(stderr,"[imagen]\nnombre=%s\n",nombreimagen);
 				}
 				switch (r_img)
 				{
 					case FP_VERIFY_MATCH:
 						prg_sts = 0;
-						fprintf(stderr, "[verify]\nstatus=TRUE\n[error]\nsalida=0\n");
+						if ( interfaz )
+							fprintf(stderr,"TRUE\n0\n");
+						else
+							fprintf(stderr, "[verify]\nstatus=TRUE\n[error]\nsalida=0\n");
 						break;
 					default: /* hay mas casos pero por motivos didacticos estos son suf */
-						fprintf(stderr, "[verify]\nstatus=FALSE\n[error]\nsalida=%d\n",r_img);
 						prg_sts = r_img;
+						if ( interfaz )
+							fprintf(stderr,"FALSE\n%d\n",r_img);
+						else
+							fprintf(stderr, "[verify]\nstatus=FALSE\n[error]\nsalida=%d\n",r_img);
 						break;
 				}
 				if(r_dat<0) 
@@ -210,10 +290,20 @@ int main(int argc, char **argv)
 			}
 			while(0);
 		}
+		if ( operacion == 2 && dummy == TRUE )
+		{
+			if ( interfaz )
+				fprintf(stderr,"TRUE\n0\n");
+			else
+				fprintf(stderr, "[imagen]\nnombre=%s\n[verify]\nstatus=TRUE\n[error]\nsalida=0\n",nombreimagen);
+			prg_sts = 0;
+		}
 
 	}
 
-	fp_dev_close(dispositivo);
+	if ( dummy == FALSE )
+		fp_dev_close(dispositivo);
+
 	fp_exit ();
 	/* salida */
 	return (prg_sts);
