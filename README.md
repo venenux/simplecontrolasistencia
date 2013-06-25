@@ -20,6 +20,26 @@ en el mejor de los casos, tienen mucha depndencias en motores de base de datos
 lo que ayuda a justificar consultoria y cobros en soporte tecnico externo.
 
 
+More info/Mas info
+------------------
+
+En la wiki, tambien resumido en este archivo:
+
+Main laguaje are spanish/Lenguaje principal es español.
+
+* https://github.com/mckaygerhard/simplecontrolasistencia/wiki
+
+LEER COMPLETO ESTE ARCHIVO ANTES DE SEGUIR.
+
+
+Requeriments, instrucciones:
+--------------------------
+
+Estan en la wiki, tambien un resumen al final de este archivo:
+
+* https://github.com/mckaygerhard/simplecontrolasistencia/wiki/Requerimientos-Requeriments
+
+
 Caracteristicas
 ---------------
 
