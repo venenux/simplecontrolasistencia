@@ -1,0 +1,152 @@
+' Gambas class file
+
+Private horaalescanear As Date
+Private mensageinput As String
+Public datos As DData
+
+Public Sub _new()
+
+End
+
+Public Sub Form_Open()
+
+    mensageinput = "Ingrese id"
+    Me.datos = New DData
+    Me.datos = Mset.prepararporconfiguracion()
+    Me.datos.setUsuarioActual("tempo")
+    Mcaptura.scan_cmd = 0
+    iniciarAsistencia
+    iniciarCamara
+
+End
+
+Public Sub iniciarAsistencia()
+
+    Dim fechaactual As String
+    Dim dbmanagdat As DBmandat
+
+    fechaactual = Format$(Now, "yyyy/mm/dd hh:nn:ss")
+    ' inicializacion de variables y entorno de captura, asi como de muestra
+    mensageusuario.Hide
+    tiempotranscurrido_imagenes.Stop
+    img_mostrar_scan.Hide
+    inputficha.Text = mensageinput
+    ' interfaz preparada, arranca el horario de trabajo
+    horamostrar.Start
+    Print " listo " & Mcaptura.scan_cmd & " usu " & datos.getUsuarioActual()
+    If Mcaptura.scan_cmd == 2 Or Mcaptura.scan_cmd == 1
+        dbmanagdat = New DBmandat
+        dbmanagdat.enrolar()
+    Endif
+
+End
+
+Public Sub iniciarCamara()
+
+    Mcaptura.scan_cara_imagen(Null)
+
+End
+
+'' Esta funcion es importante, se dispara en "Mcaptura.scan_dedo_imagen()"
+Public Sub tiempotranscurrido_imagenes_Timer()
+
+    Print " vigilando "
+    ' en lo que arranca nuestro temporizador, excondemos el boton
+    btnscanear.Visible = False
+    btnscanear.Hide
+    inputficha.Hide
+    Mcaptura.scan_cmd = 0
+    ' mandamos (en el ciclo del timer) esperar 4 segundos, y despues volvemos dejar tirar foto y huella
+    If DateDiff(horaalescanear, Now, gb.Second) > 3 Then
+        img_mostrar_scan.Hide  ' por supuesto, si ya se mostro huella, y se vuelve capturar, escondemos la anterior
+        btnscanear.Visible = True
+        btnscanear.Show
+        inputficha.Show
+        mensageusuario.Hide
+        horamostrar.Start
+        img_mostrar_scan.Hide
+        Mcaptura.scan_cmd = 2
+        tiempotranscurrido_imagenes.Stop
+        FMain.iniciarAsistencia
+    Endif
+    Print " estado " & Mcaptura.scan_cmd
+
+End
+
+'' al llamarse, marca un tiempo, se usa
+'' para determinar cuanto tiempo ha pasado desde que se le llamo,
+'' usela con el timer "tiempotranscurrido_foto"
+Public Sub setHoraAlEscanear()
+
+    horaalescanear = Now
+
+End
+
+'' muestra fecha y hora en el formulario principal, al iniciarse
+Public Sub horamostrar_Timer()
+
+    horalcd.Text = Format$(Now, "dd/mmmm/yyyy hh:nn:ss")
+    horalcd.Refresh
+
+End
+
+Public Sub inputficha_GotFocus()
+
+    inputficha.Text = ""
+
+End
+
+Public Sub Form_KeyPress()
+
+    If Key.code = Key.Return Or Key.code = Key.Enter Then
+        If inputficha.Text == mensageinput Or Trim(inputficha.Text) == "" Then
+            inputficha.SetFocus
+        Else
+            btnscanear_Click
+        Endif
+    Endif
+
+End
+
+'' al activasrse, llama el evento de escaneo,
+'' tomando desde la instancia de datos, el usuario,
+'' y deteniendo la hora para que se muestre cuando se escaneo
+Public Sub btnscanear_Click()
+
+    inputficha.SetFocus
+    If inputficha.Text == mensageinput Or Trim(inputficha.Text) == "" Then
+        Message.Info(mensageinput)
+        Return
+    Else
+        Me.datos.setUsuarioActual(inputficha.Text)
+        horamostrar.Stop
+        Mcaptura.scan_cmd = 1
+        btnscanear.Hide
+        btnscanear.Visible = False
+        Mcaptura.scan_dedo_imagen(Me.datos.getUsuarioActual())
+    Endif
+
+End
+
+Public Sub pintarvideo_Timer()
+
+    videoarea_Draw
+
+End
+
+Public Sub videoarea_Draw()
+
+  Dim hPict As Picture
+  
+  pintarvideo.Enabled = False
+  
+  'Try PictureBox1.Picture = hWebCam.Picture
+  Draw.Begin(videoarea)
+  hPict = Mcaptura.getCamera().Image.Picture
+  Draw.Picture(hPict, (Me.videoarea.W - hPict.W) \ 2, (Me.videoarea.H - hPict.H) \ 2)
+  Draw.End
+  
+  pintarvideo.Enabled = True
+  
+
+End

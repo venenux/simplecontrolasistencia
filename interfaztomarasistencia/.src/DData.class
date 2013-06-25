@@ -1,0 +1,170 @@
+' Gambas class file
+
+' Gambas class file, DData 
+' es una clase porque actua como contenedor, y 
+' se crea una instancia por cada enrolamiento/alistamiento
+' y cada contenedor es un usuario/trabajador a tomarsele asistencia
+' cuando elproceso meure esta clase debe ser destruida, para borrar los datos
+' al reiniciar otro proceso(usuario/trabajador) 
+' se crea una nueva instancia con datos nuevos (del nuevo usuario/traajador)
+
+
+
+'' imagen del usuario en proceso
+Private imagenencriptada64 As String
+
+Public Sub setImagenEncriptada64(img As String)
+    imagenencriptada64 = img
+End
+
+Public Sub getImagenEncriptada64() As String
+    Return imagenencriptada64
+End
+
+Public Sub getImagenDecriptada() As String
+    Return UnBase64(imagenencriptada64)
+End
+
+
+
+'' usuario en proceso
+Private usuarioActual As String
+'' configura el nombre/ficha del usuario para manejar
+
+Public Sub setUsuarioActual(usuario As String)
+    usuarioActual = usuario
+End
+'' obtiene el nombre/ficha del usuario para manejar
+
+Public Sub getUsuarioActual() As String
+    Return usuarioActual
+End
+
+
+
+'' ubicacion del usuario en proceso
+Private ubicacionusuario As String
+'' asigna la ubicacion del usuario para manejar
+
+Public Sub setUbicacionUsuario(usuario As String)
+    ubicacionusuario = usuario
+End
+'' obtiene la ubicacion del usuario para manejar
+
+Public Sub getUbicacionUsuario() As String
+    Return ubicacionusuario
+End
+
+
+
+'' ruta de los datos de fprint (segun dispositivo) del proceso actual
+Private rutafprintdaya As String
+'' asigna la ubicacion del directorio de trabajo fprint segun dispositivo
+
+Public Sub setRutaFprintData(usuario As String)
+    rutafprintdaya = usuario
+End
+'' obtiene la ubicacion del directorio de trabajo fprint segun dispositivo
+
+Public Sub getRutaFprintData() As String
+    Return rutafprintdaya
+End
+
+
+
+'' camara del usuario en proceso
+Private camara As String
+'' asigna la camara para manejar
+
+Public Sub setCamara(cam As String)
+    camara = cam
+End
+'' obtiene la camara para manejar
+
+Public Sub getCamara() As String
+    Return camara
+End
+
+
+
+'' contypo de la DB en proceso
+Private contipo As String
+'' define el tipo de conexcion a db
+
+Public Sub setContipo(cam As String)
+    contipo = cam
+End
+'' dice que tipo de conexcion se configuro si se configuro
+
+Public Sub getContipo() As String
+    Return contipo
+End
+
+
+
+'' data del los dedos del usuario en proceso
+Private datablob As Variant
+'' data encriptada de los dedos del usuario en proceso
+Private datablobcypt As Variant
+'' asigna al proceso actual del usuario un binario para asociarlo y trabajarlo
+Public Sub setDataBlob(datab As Variant)
+    datablob = datab
+End
+'' no implementado aun
+Public Sub getDataBlobDecrypted() As Variant
+    Return UnBase64(datablob)
+End
+'' devuelve los datos del los digitos del usuario actual
+Public Sub getDataBlob() As String
+    Return datablob
+End
+
+
+'' estado del enrollado en el proceso actual
+Private statusenrolado As Boolean
+
+Public Sub setStatusEnrolado(datab As Boolean)
+    statusenrolado = datab
+End
+
+Public Sub itsEnrolado() As Boolean
+    Return statusenrolado
+End
+
+
+
+'' estado del verificado en el proceso actual
+Private statusverificado As Boolean
+
+Public Sub setStatusVerificado(datab As Boolean)
+    statusverificado = datab
+End
+
+Public Sub itsVerificado() As Boolean
+    Return statusverificado
+End
+
+
+'' estado de si esta la camara cargada, use primero el modulo Mcaptura para setear los valores
+Private validalacamara As Boolean
+'' avisa que la camara esta validada o no, use primero el modulo Mcaptura para setear los valores
+Public Sub setStatusCamara(pasolabicha As Boolean)
+    validalacamara = pasolabicha
+End
+'' reporta si la camara es valida o no hay una valida, use primero el modulo Mcaptura para setear los valores
+Public Sub itsAndandoCamara() As Boolean
+    Return validalacamara
+End
+
+
+'' estado de si esta el escaner conectado y andando, use primero el modulo Mcaptura para setear los valores
+Private validoelescaner As Boolean
+'' aviso parqa tener en cuenta si hay escaner o esta disponible, use primero el modulo Mcaptura para setear los valores
+Public Sub setStatusEscaner(pasolabicha As Boolean)
+    validoelescaner = pasolabicha
+End
+'' reporta si hay escaner valido y andando disponible, use primero el modulo Mcaptura para setear los valores
+Public Sub itsAndandoEscaner() As Boolean
+    Return validoelescaner
+End
+
