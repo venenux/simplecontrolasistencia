@@ -90,7 +90,7 @@ int main(int argc, char **argv)
 	{
 		disposivouno = dispositivosposibles[0]; /* seleccionado el primer dispositivo de todos los encontrados */
 		if ( !disposivouno ) /*libreria enlazada, usb bueno, pero dispositivo 1 no valido, o el seleccionado primero no sirve */
-			exit (2);
+			dummy = TRUE;
 	}
 
 	struct fp_dev *dispositivo; /* representar el dispositivo a manejar en el codigo */
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 	{
 		dispositivo = fp_dev_open (disposivouno); /* representacion del dispositivo usandose */
 		if ( !dispositivo ) /* dispositivo encontrado, pero esta bloqueado, libusb no maneja asincronos eventos */
-			exit (3);
+			dummy = TRUE;
 	}
 
 	struct fp_driver *dvc; /* abstraccion especifica del dispositivo, en el OS */
@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 		sprintf (dvcidname, "%04X", dvcid); /* el formato para el id del driver es de 4 digitos en la ruta*/
 	}
 	else
-		sprintf (dvcidname, "%04X", "9999"); /* el formato para el id del driver es de 8 digitos en la ruta*/
+		sprintf (dvcidname, "%04X", 99); /* el formato para el id del driver es de 8 digitos en la ruta*/
 
 	uint32_t dvcnu;
 	char dvcidtype[64];		/* este se requiere despues, para detectar sub ruta de guardado de data */
@@ -126,7 +126,7 @@ int main(int argc, char **argv)
 		sprintf (dvcidtype, "%08X", dvcnu); /* el formato para el id del driver es de 8 digitos en la ruta*/
 	}
 	else
-		sprintf (dvcidtype, "%08X", "00000000"); /* el formato para el id del driver es de 8 digitos en la ruta*/
+		sprintf (dvcidtype, "%08X", 99); /* el formato para el id del driver es de 8 digitos en la ruta*/
 
 	unsigned char *dvcname; /* para informamos el nombre, id y devtype del dispositivo si encontramos uno */
 	if ( dummy == FALSE )
