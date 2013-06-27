@@ -27,6 +27,7 @@ End
 '' este proceso inicia y/o prepara la apariencia en el modo normal (sin hacer nada)
 Public Sub iniciarInterfaz()
     
+    Dim dbmanagdat As DBmandat
     ' inicializacion de variables y entorno de captura, asi como de muestra
     mensageusuario.Hide
     tiempotranscurrido_imagenes.Stop

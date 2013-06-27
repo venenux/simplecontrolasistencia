@@ -121,7 +121,7 @@ Public Sub funcionando_escaner()
         Endif
     Endif
 
-    Shell comd & "  identify interfaz 2>&1 " To resultado_backend ""
+    Shell comd & "  identify interfaz 2>&1 " To resultado_backend
     LineasProcesamiento = Split(resultado_backend, "\n")
     ' 0 = <nombre humano del escaner> ejemplo en modo dummy: Dummy/Falso Quien carizo eres tu finger/dedo scaner 0000
     ' 1 = <id numerico> : 0063 es dummy
@@ -132,14 +132,11 @@ Public Sub funcionando_escaner()
     FMain.datos.setRutaFprintData(User.Home & "/" & LineasProcesamiento[3])
     FMain.datos.setDataBlob(Null)
 
-    ' mandamos a pedir la ruta al backend, y la guardamos en una variable, alli trabajaremos
-    Shell comd & " path interfaz " & dummy & " 2>&1" To ruta ' nuestro backend esta hecho para que devuelva solo una linea
-
 End
 
 '' proceso para escanear el dedo del esclavo
 
-Public Sub scan_dedo_imagen(usuario As String)
+Public Sub scan_dedo_rostro(usuario As String)
 
     Dim ramdi As Integer ' usado para esconder la imagen
 
@@ -159,6 +156,9 @@ Public Sub scan_dedo_imagen(usuario As String)
     ramdi = Int(Rnd * 100000000)
     foto = usuario & ramdi & ".pgm"   ' configuro el nombre de la foto segun el usuario y una var aleatoria
 
+    ' mandamos a pedir la ruta al backend, y la guardamos en una variable, alli trabajaremos
+    Shell scanerdedocmd & " path interfaz 2>&1" To ruta ' nuestro backend esta hecho para que devuelva solo una linea
+
     ' armo la ruta y el ubicacion de la foto, pa mostrasela, auqnue leonardo se queje, y sea grotesco
     ruta_d_huella = User.Home & "/" & ruta & foto
 
@@ -171,7 +171,7 @@ Public Sub scan_dedo_imagen(usuario As String)
 
     'hProcesamiento = Exec [comd, "frontend" "enroll", "image", ruta_d_huella] For Read As "Procesamiento"
     'Shell comd & " interfaz enroll image " & ruta_d_huella & " 2>&1" To resultado_backend
-    Shell comd & " interfaz enroll finger " & dedo & " image " & ruta_d_huella & dummy & " 2>&1" To resultado_backend
+    Shell scanerdedocmd & " interfaz enroll finger " & dedo & " image " & ruta_d_huella & dummy & " 2>&1" To resultado_backend
     LineasProcesamiento = Split(resultado_backend, "\n")
     ' 0 = nombreimagen=<ruta>/noencontrado.pgm
     ' 1 = rutafiledata =<HOME>/.fprint/prints/<rutadevice>/<dedo> obviado en modo dummy
