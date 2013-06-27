@@ -10,22 +10,23 @@ End
 
 Public Sub Form_Open()
 
+    Me.center
     mensageinput = "Ingrese id"
     Me.datos = New DData
     Me.datos = Mset.prepararporconfiguracion()
     Me.datos.setUsuarioActual("tempo")
-    Mcaptura.scan_cmd = 0
-    iniciarAsistencia
+    Mcaptura.est_app_asis = 0
+    iniciarInterfaz
+    iniciarEscaner
     iniciarCamara
+
 
 End
 
-Public Sub iniciarAsistencia()
 
-    Dim fechaactual As String
-    Dim dbmanagdat As DBmandat
-
-    fechaactual = Format$(Now, "yyyy/mm/dd hh:nn:ss")
+'' este proceso inicia y/o prepara la apariencia en el modo normal (sin hacer nada)
+Public Sub iniciarInterfaz()
+    
     ' inicializacion de variables y entorno de captura, asi como de muestra
     mensageusuario.Hide
     tiempotranscurrido_imagenes.Stop
@@ -33,17 +34,27 @@ Public Sub iniciarAsistencia()
     inputficha.Text = mensageinput
     ' interfaz preparada, arranca el horario de trabajo
     horamostrar.Start
-    Print " listo " & Mcaptura.scan_cmd & " usu " & datos.getUsuarioActual()
-    If Mcaptura.scan_cmd == 2 Or Mcaptura.scan_cmd == 1
+    
+    Print " listo " & Mcaptura.est_app_asis & " usu " & datos.getUsuarioActual()
+    If Mcaptura.est_app_asis == 2 Or Mcaptura.est_app_asis == 1
         dbmanagdat = New DBmandat
         dbmanagdat.enrolar()
     Endif
+    
+End
+
+
+'' proceso que prepara el dispositivo de escanedo dactilar, establece un semaforo para saber cuando esta disponible
+Public Sub iniciarEscaner()
+
+    Mcaptura.funcionando_escaner()
 
 End
 
+'' proceso que enciende la camara, segun la config y las propiedades establecidas
 Public Sub iniciarCamara()
 
-    Mcaptura.scan_cara_imagen(Null)
+    Mcaptura.funcionando_camara()
 
 End
 
@@ -55,7 +66,7 @@ Public Sub tiempotranscurrido_imagenes_Timer()
     btnscanear.Visible = False
     btnscanear.Hide
     inputficha.Hide
-    Mcaptura.scan_cmd = 0
+    'Mcaptura.est_app_asis = 0
     ' mandamos (en el ciclo del timer) esperar 4 segundos, y despues volvemos dejar tirar foto y huella
     If DateDiff(horaalescanear, Now, gb.Second) > 3 Then
         img_mostrar_scan.Hide  ' por supuesto, si ya se mostro huella, y se vuelve capturar, escondemos la anterior
@@ -65,11 +76,11 @@ Public Sub tiempotranscurrido_imagenes_Timer()
         mensageusuario.Hide
         horamostrar.Start
         img_mostrar_scan.Hide
-        Mcaptura.scan_cmd = 2
+        Mcaptura.est_app_asis = 2
         tiempotranscurrido_imagenes.Stop
-        FMain.iniciarAsistencia
+        FMain.iniciarEscaner
     Endif
-    Print " estado " & Mcaptura.scan_cmd
+    Print " estado " & Mcaptura.est_app_asis
 
 End
 
@@ -120,10 +131,12 @@ Public Sub btnscanear_Click()
     Else
         Me.datos.setUsuarioActual(inputficha.Text)
         horamostrar.Stop
-        Mcaptura.scan_cmd = 1
+        Mcaptura.est_app_asis = 1
         btnscanear.Hide
         btnscanear.Visible = False
         Mcaptura.scan_dedo_imagen(Me.datos.getUsuarioActual())
+        Try Mcaptura.getCamera().Save(User.Home & "/." & datos.getUsuarioActual() & ".png")
+        
     Endif
 
 End
@@ -138,15 +151,18 @@ Public Sub videoarea_Draw()
 
   Dim hPict As Picture
   
-  pintarvideo.Enabled = False
-  
+  hPict = Mcaptura.getCamera().Image.Picture
   'Try PictureBox1.Picture = hWebCam.Picture
   Draw.Begin(videoarea)
-  hPict = Mcaptura.getCamera().Image.Picture
   Draw.Picture(hPict, (Me.videoarea.W - hPict.W) \ 2, (Me.videoarea.H - hPict.H) \ 2)
   Draw.End
   
   pintarvideo.Enabled = True
   
+
+End
+
+Public Sub btnverificar_Click()
+
 
 End

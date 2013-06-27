@@ -49,6 +49,7 @@
   { btnverificar Button
     MoveScaled(62,46,16,6)
     ToolTip = ("Escanear , pulse aqui")
+    Text = ("Verificar")
     Picture = Picture["data/fingermachine.jpg"]
     Default = True
   }

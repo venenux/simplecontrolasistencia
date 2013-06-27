@@ -72,17 +72,32 @@ End
 
 
 
-'' camara del usuario en proceso
+'' camara dispositivo a usar del usuario en proceso
 Private camara As String
-'' asigna la camara para manejar
+'' asigna la camara dispositivo a usar para manejar
 
-Public Sub setCamara(cam As String)
+Public Sub setCamaraDev(cam As String)
     camara = cam
 End
-'' obtiene la camara para manejar
+'' obtiene la camara dispositivo a usar para manejar
 
-Public Sub getCamara() As String
+Public Sub getCamaraDev() As String
     Return camara
+End
+
+
+
+'' tamano de video de la camara del usuario en proceso
+Private camarasize As String
+'' asigna el tamano de video de la camara para manejar
+
+Public Sub setCamaraSize(cam As String)
+    camarasize = cam
+End
+'' obtiene el tamano de video de la camara para manejar
+
+Public Sub getCamaraSize() As String
+    Return camarasize
 End
 
 

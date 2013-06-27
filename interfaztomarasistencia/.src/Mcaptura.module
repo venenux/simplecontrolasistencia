@@ -1,137 +1,174 @@
 ' Gambas module file
 
-Library "libfprint:0"
+'
+' este modulo gestiona los dispositivos empleados, y su uso,
+' verifica si existe, despues los configura o enciende para empezar usarlos
+'
+' este modulo proporciona funciones de captura de imagenes de foto y dedo
+' una funcion de enrolado y otra de verificado
+'
+' la funcion de enrolado solo agrega usuarios a la base de datos de listado
+'
+' la funcion de verificado agrega registros a la base de datos de registros diarios
+'
+' la gestion de los datos es aparte, esto modulo solo asume datos en el sistema de ficheros
+' es decir, el modulo de DB tomara los datos desde el sistema de ficheros,
+' en el modo verificar se saca los datos previamente y se coloca donde la libreria espera encontrarlos
+' en cada proceso de operaciones, se invoca las llamadas al modulo de gestion de base de datos
+'
 
-Private Extern fp_init() As Integer
-Private Extern fp_set_debug()
-Private Extern fp_exit()
-Private Extern fp_discover_devs() As Pointer
-Private Extern fp_dscv_dev_get_driver(fp_dev As Pointer)
+Library "libfprint:0" ' uso de libreria externa aun en progreso
 
-Private fp_dscv_dev As Pointer ' TODO this its a double pointer.. get problems
-Private fp_dscv_dev_dev As Pointer
-Private fp_driver As Pointer
+Private Extern fp_init() As Integer ' importacion de inicio de funciones de la lib figerprint
+Private Extern fp_set_debug()       ' importacion de configuraciones de depurado
+Private Extern fp_exit()            ' importacion de proceso para salir y limpiar la ram de relacionados con la libreria
+Private Extern fp_discover_devs() As Pointer    ' funciones de descubrimiento de dispositivos
+Private Extern fp_dscv_dev_get_driver(fp_dev As Pointer)    ' funciones de obtencion de info del dispositivo seleccionado
 
-Public hWebcam As VideoDevice
-Private Fps As Date
-Private nFps As Integer
+Private fp_dscv_dev As Pointer      ' TODO this its a double pointer.. get problems, must be use with VarPtr() but gambas3 cant do
+Private fp_dscv_dev_dev As Pointer  ' abstraccion del pool de dispositivos para seleccionar uno
+Private fp_driver As Pointer        ' abstraccion de la representacion del dispositivo, y sus capacidades especificas
 
-Private hProcesamiento As Process ' ejecuto el backend en un hilo para que no guinde la interfaz
-Private sSalida As String
-Private LineaProcesamiento As String  ' esta contiene la salida escupida por el backend
-Private LineasProcesamiento As String[]
-Private scanerdedocmd As String ' nombre del comando segun el entorno
+Public hWebcam As VideoDevice       ' abstraccion del dispositivo de camara de video
 
-Private iscamerapresente As Boolean
-Private isscanerpresente As Boolean
+Private hProcesamiento As Process   ' hilo en que se ejecutara el backend para atrapar los resultados que arroje
+Private sSalida As String           ' variable en que esta el resultado arrojado por el proceso
+Private LineaProcesamiento As String  ' esta contiene una linea a la vez de la salida escupida por el backend
+Private LineasProcesamiento As String[] ' bufer de la salida del proceso para ser analizada liena por linea
 
-Public scan_cmd As Integer
-Public dedo As Integer
+Private scanerdedocmd As String     ' nombre del comando que escanea el dedo, segun el entorno
 
-'' proceso para tomar una foto en caso no hay escaner
-Public Sub scan_cara_imagen(usuario As String)
-    
-    Dim sSize As String
-    Dim hPict As Picture
-    
+Private iscamerapresente As Boolean ' variable que indicara que hay una camara usable
+Private isscanerpresente As Boolean ' variable que indicara que hay un escaner de dedos
+
+Public mcaptura_emu As Boolean      ' semaforo, o indicador si al no haber dispositivo entra en modo emulado (igual que isscanerpresente)
+Public est_app_asis As Integer      ' semaforo, o interrupcion de salud del modulo, 0 listo, 1 se va invocar, 2 en pleno uso, 3 malo no hay backend
+Public dedo As Integer              ' dedo especificado empleado en el escaneo o verificacion de la huella dactilar
+
+'' procesos de preparacion y gestion la camara de video, la verificamos, configuramos y encendemos, en caso no haya backend
+Public Sub funcionando_camara()
+
+    Dim tamanovideo As New String[]
+
     If hWebCam Then
         hWebCam = Null
         FMain.Pintarvideo.Enabled = False
         Return
     Endif
-    
-    Try hWebCam = New VideoDevice(FMain.datos.getCamara())
+
+    Try hWebCam = New VideoDevice(FMain.datos.getCamaraDev())
     If Error Then
         FMain.datos.setStatusCamara(False)
         Message.Error(("Instale una camara valida linux, ademas debe ser solo una, revise la configuracion"))
+        est_app_asis = 5 ' sin camara o camara mal asignada... 
         Return
     Endif
-    
-    hWebCam.Source = hWebCam.TV + hWebCam.PAL
+
     hWebCam.Bright = 40
     hWebCam.Contrast = 140
     hWebCam.Whiteness = 100
     hWebCam.Hue = 50
     hWebCam.Color = 110
-    hWebcam.Resize(320, 240)
-    
-    hWebCam.Source = hWebCam.TV + hWebCam.Ntsc
-    
-    Wait 0.001
+
+    tamanovideo = Split(FMain.datos.getCamaraSize(), "x")  ' de  la config leo una liena XXXxYYY ypico el string numerico en la x minuscula
+    If tamanovideo.Max == 1 Then
+        Try hWebcam.Resize(Val(tamanovideo[0]), Val(tamanovideo[1])) ' no verifico que los valores sean correctos aun
+        If Error Then
+            hWebcam.Resize(320, 240) ' si los valores no son correctos uso por defecto
+        Endif
+    Else
+        hWebcam.Resize(320, 240) ' si el string esta mal formateado (menos o mas de dos elementos, uso por defecto
+    Endif
+
+    Wait 0.001 ' espero un poco a quela camara se inicialize, gambas tarda en maquinas pote
     FMain.pintarvideo.Delay = 10
-    FMain.pintarvideo.Enabled = True
-    
+    FMain.pintarvideo.Enabled = True ' enciendo un temporizador que pinta en cada pasada una foto y simula el video
+
 End
 
-'' proceso para escanear el dedo del esclavo 
+'' procesos de deteccion y preparacion del escaner, primero vemos si hay libreria, y despues si hay backend
+Public Sub funcionando_escaner()
+
+    Dim resultado_backend As String ' usado para obtener una config desde el programa backend
+    Dim devlib As Integer ' variable de resultado de inicio de la libreria
+    Dim comd As String ' comando a invocar, variable no perecedera
+    
+    devlib = fp_init() ' deteccion de si tenemos libfprint instalada, sino el programa a invocar fallara
+    If (devlib < 0) Then
+        Message.Error("Libreria de escaneo no instalada/detectada, instale libfprint para usar el backend con el escaner")
+        est_app_asis = 3 ' sin liberia, el comando fallara
+        Return
+    Else
+        fp_exit() ' libreria esta, si puede invoco el linea de comandos
+    Endif
+
+    If IsNull(scanerdedocmd) Then
+        setScanerdedoCmd("escanerdedo") ' nombre del comando para escanear el dedo, si no se configuro
+    Endif
+
+    comd = scanerdedocmd & "cmd" ' comando de produccion
+
+    If Not Exist(comd) Then
+        comd = scanerdedocmd  ' si no existe, estas en desarrollo?
+        If Not Exist(comd) Then
+            comd = User.Home & "/devel/simplecontrolasistencia/escanerdedo/escanerdedo"
+            If Not Exist(comd) Then
+                comd = scanerdedocmd & "cmd"  ' en ultima instancia tomo el ultimo compilado sin limpiar de aqui
+            Else
+                Message.Error("El software de escaneo, no esta instalado, ¿se apago la maquina mal? ¿se instalo el software mal?")
+                est_app_asis = 4 ' hay libreria de gestion de scaners, pero no hay comando backend
+            Endif
+        Endif
+    Endif
+
+    Shell comd & "  identify interfaz 2>&1 " To resultado_backend ""
+    LineasProcesamiento = Split(resultado_backend, "\n")
+    ' 0 = <nombre humano del escaner> ejemplo en modo dummy: Dummy/Falso Quien carizo eres tu finger/dedo scaner 0000
+    ' 1 = <id numerico> : 0063 es dummy
+    ' 2 = <tipo> : 00000063 es dummy
+    ' 3 = rutafiledata =<HOME>/.fprint/prints/<rutadevice>/<dedo> generalemnte debe ser obviado en modo dummy
+    ' 4 = nombreimagen = noencontrado.pgm o usuarioid.pgm
+
+    FMain.datos.setRutaFprintData(User.Home & "/" & LineasProcesamiento[3])
+    FMain.datos.setDataBlob(Null)
+
+    ' mandamos a pedir la ruta al backend, y la guardamos en una variable, alli trabajaremos
+    Shell comd & " path interfaz " & dummy & " 2>&1" To ruta ' nuestro backend esta hecho para que devuelva solo una linea
+
+End
+
+'' proceso para escanear el dedo del esclavo
 
 Public Sub scan_dedo_imagen(usuario As String)
-    
-    Dim devlib As Integer ' variable de resultado de inicio de la libreria
+
     Dim ramdi As Integer ' usado para esconder la imagen
-    
+
     Dim resultado_backend As String ' usado para obtener una config desde el programa backend
     Dim fotocodificada As String ' usado para mostrar la imagen en la pantalla al enrollar
     Dim ruta_d_huella As String ' la direccion del archivo foto imagen resultante
     Dim ruta_d_foto As String ' la direccion del archivo huella imagen resultante
     Dim foto As String ' el nombre de la foto, que sera el id usuario + aleatorio
     Dim ruta As String ' ruta de trabajo de los datos, digitos y foto
-    Dim comd As String ' comando a invocar, variable no perecedera
-    Dim dummy As String = " dummy dummysts FALSE" ' por si quitan el finger reader
-    
+    Dim dummy As String = " dummy dummysts FALSE" ' deprecated, aora el comando se autodetecta el dispositivo
+
     Dim hconn As Connection ' conexcion a DB sqlite, offline, fault toleran
-    
+
     dedo = 1
-    
-    ' deteccion de si tenemos libfprint instalada, para poder invocar el programa, sino el programa falla
-    devlib = fp_init()
-    If (devlib < 0) Then
-        Message.Error("Libreria de escaneo no instalada/detectada, instale libfprint para usar el backend/escaner")
-        scan_cmd = -1
-        Return
-    Else
-        fp_exit() ' libreria esta, si puede invoco el linea de comandos
-    Endif
-    
-    If IsNull(scanerdedocmd) Then
-        setScanerdedoCmd("escanerdedo") ' nombre del comando para escanear el dedo, si no se configuro
-    Endif
-    
+
     Randomize CInteger(Val(Format$(Now, "ddmmyyyyhhnnss")))
     ramdi = Int(Rnd * 100000000)
     foto = usuario & ramdi & ".pgm"   ' configuro el nombre de la foto segun el usuario y una var aleatoria
-    
-    comd = "/usr/bin/" & scanerdedocmd & "cmd" ' comando de produccion
-    
-    If Not Exist(comd) Then 
-        comd = "/usr/bin/" & scanerdedocmd  ' si no existe, estas en desarrollo?
-        If Not Exist(comd) Then
-            comd = User.Home & "/devel/simplecontrolasistencia/escanerdedo/" & scanerdedocmd
-            If Not Exist(comd) Then
-                comd = scanerdedocmd & "cmd"  ' en ultima instancia tomo el ultimo compilado sin limpiar de aqui
-            Endif
-        Else
-            comd = "/usr/bin/" & scanerdedocmd ' deberia estar instalado en la ruta estandar
-        Endif
-    Endif
-    
-    Shell comd & " interfaz enroll finger " & dedo & " image " & ruta_d_huella & " 2>&1" To resultado_backend
-    LineasProcesamiento = Split(resultado_backend, "\n")
-    ' 0 = nombre dispositivo, enmodo info pide dispositivo
-    
-    ' mandamos a pedir la ruta al backend, y la guardamos en una variable, alli trabajaremos
-    Shell comd & " path interfaz " & dummy & " 2>&1" To ruta ' nuestro backend esta hecho para que devuelva solo una linea
-    
+
     ' armo la ruta y el ubicacion de la foto, pa mostrasela, auqnue leonardo se queje, y sea grotesco
     ruta_d_huella = User.Home & "/" & ruta & foto
-    
+
     FMain.mensageusuario.Text = "Registrado " & usuario
     FMain.inputficha.Hide
     ' eliminamos cualquier archivo previo
     If Exist(ruta_d_huella) Then Kill ruta_d_huella
     ' pedimos a nuestra aplicacion que tome una foto del dedo
     FMain.mensageusuario.Show
-    
+
     'hProcesamiento = Exec [comd, "frontend" "enroll", "image", ruta_d_huella] For Read As "Procesamiento"
     'Shell comd & " interfaz enroll image " & ruta_d_huella & " 2>&1" To resultado_backend
     Shell comd & " interfaz enroll finger " & dedo & " image " & ruta_d_huella & dummy & " 2>&1" To resultado_backend
@@ -144,7 +181,7 @@ Public Sub scan_dedo_imagen(usuario As String)
     FMain.datos.setRutaFprintData(User.Home & "/" & ruta)
     FMain.datos.setDataBlob(File.Load(LineasProcesamiento[1]))
     FMain.datos.setStatusEnrolado(LineasProcesamiento[3])
-    
+
     ' tomamos el tiempo para solo mostrar la fotico unos segundos
     FMain.setHoraAlEscanear
     FMain.tiempotranscurrido_imagenes.Start
@@ -158,33 +195,24 @@ Public Sub scan_dedo_imagen(usuario As String)
     ' eliminamos rastro, dado ya tenemos la foto dactilar y el archivo, incluso encriptado
     'Copy ruta_d_huella To User.Home &/ ".escaneadoactual.pgm"
     Return
-    
-End
 
-Public Sub Procesamiento_Read()
-    
-    Dim sLine As String
-    
-    Read #Last, sLine, -256
-    
-    sSalida &= sLine
-    
 End
 
 Public Sub setScanerdedoCmd(command As String)
-    
-    scanerdedocmd = command
-    
+
+    scanerdedocmd = "/usr/bin/" & command
+
 End
 
 Public Sub getScanerdedoCmd() As String
-    
+
     Return Mcaptura.scanerdedocmd
 
 End
 
+'' otorga acceso a la camara web una vez configurada por "funcionando_camara"
 Public Sub getCamera() As VideoDevice
-    
-    Return Mcaptura.hWebcam  
-    
+
+    Return Mcaptura.hWebcam
+
 End
