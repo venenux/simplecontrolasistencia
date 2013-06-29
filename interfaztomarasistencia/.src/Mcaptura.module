@@ -38,12 +38,14 @@ Private LineasProcesamiento As String[] ' bufer de la salida del proceso para se
 
 Private scanerdedocmd As String     ' nombre del comando que escanea el dedo, segun el entorno
 
-Private iscamerapresente As Boolean ' variable que indicara que hay una camara usable
-Private isscanerpresente As Boolean ' variable que indicara que hay un escaner de dedos
+Private iscamerapresente As Boolean ' variable que indicara que hay una camara usable, si false revisar config o dispositivo dev
+Private isscanerpresente As Boolean ' variable que indicara que hay un escaner de dedos, si false, esta en modo emulado
 
 Public mcaptura_emu As Boolean      ' semaforo, o indicador si al no haber dispositivo entra en modo emulado (igual que isscanerpresente)
-Public est_app_asis As Integer      ' semaforo, o interrupcion de salud del modulo, 0 listo, 1 se va invocar, 2 en pleno uso, 3 malo no hay backend
+Public est_app_asis As Integer      ' semaforo, o interrupcion de salud del modulo, 0 listo, 1 se va invocar, 2 en pleno uso/verificando, 3 malo no hay backend
 Public dedo As Integer              ' dedo especificado empleado en el escaneo o verificacion de la huella dactilar
+
+
 
 '' procesos de preparacion y gestion la camara de video, la verificamos, configuramos y encendemos, en caso no haya backend
 Public Sub funcionando_camara()
@@ -83,6 +85,9 @@ Public Sub funcionando_camara()
     Wait 0.001 ' espero un poco a quela camara se inicialize, gambas tarda en maquinas pote
     FMain.pintarvideo.Delay = 10
     FMain.pintarvideo.Enabled = True ' enciendo un temporizador que pinta en cada pasada una foto y simula el video
+    
+    ' en este puto todo fue bien, marco estado bueno del modulo en 0
+    est_app_asis = 0
 
 End
 
@@ -119,6 +124,8 @@ Public Sub funcionando_escaner()
                 est_app_asis = 4 ' hay libreria de gestion de scaners, pero no hay comando backend
             Endif
         Endif
+    Else
+        setScanerdedoCmd(comd) ' si el de produccion existe lo asigno
     Endif
 
     Shell comd & "  identify interfaz 2>&1 " To resultado_backend
@@ -171,6 +178,7 @@ Public Sub scan_dedo_rostro(usuario As String)
 
     'hProcesamiento = Exec [comd, "frontend" "enroll", "image", ruta_d_huella] For Read As "Procesamiento"
     'Shell comd & " interfaz enroll image " & ruta_d_huella & " 2>&1" To resultado_backend
+    Print scanerdedocmd & " interfaz enroll finger " & dedo & " image " & ruta_d_huella & dummy & " 2>&1"
     Shell scanerdedocmd & " interfaz enroll finger " & dedo & " image " & ruta_d_huella & dummy & " 2>&1" To resultado_backend
     LineasProcesamiento = Split(resultado_backend, "\n")
     ' 0 = nombreimagen=<ruta>/noencontrado.pgm
@@ -179,7 +187,7 @@ Public Sub scan_dedo_rostro(usuario As String)
     ' 3 = status = TRUE, FALSE si esta en modo dummy
     ' 4 = salida = 0
     FMain.datos.setRutaFprintData(User.Home & "/" & ruta)
-    FMain.datos.setDataBlob(File.Load(LineasProcesamiento[1]))
+    'FMain.datos.setDataBlob(File.Load(LineasProcesamiento[1]))
     FMain.datos.setStatusEnrolado(LineasProcesamiento[3])
 
     ' tomamos el tiempo para solo mostrar la fotico unos segundos

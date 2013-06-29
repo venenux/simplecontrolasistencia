@@ -10,16 +10,15 @@ End
 
 Public Sub Form_Open()
 
-    Me.center
+    Me.center           ' centramos el aplicativo
     mensageinput = "Ingrese id"
     Me.datos = New DData
-    Me.datos = Mset.prepararporconfiguracion()
-    Me.datos.setUsuarioActual("tempo")
-    Mcaptura.est_app_asis = 0
-    iniciarInterfaz
-    iniciarEscaner
-    iniciarCamara
-
+    Me.datos = Mset.prepararporconfiguracion()  ' leer la configuracion, que camara, que modo, que db, etc
+    Me.datos.setUsuarioActual("ninguno")
+    Mcaptura.est_app_asis = 0   ' cada funcion abajo coloca est_app_asis en 0 si exitoso, sino 3,4,5 en fallo
+    iniciarInterfaz     ' inicia y coloca oden en el grafico que ve el usuario, esconde mensages y pide id
+    iniciarEscaner      ' inicia y verifica el backend, el escaner y ve si hay uno, sino emula uno, par pedir camara
+    iniciarCamara       ' inicia y preprara la camara de video para empezar tomar fotos de los usuarios/trabajadores
 
 End
 
@@ -29,18 +28,33 @@ Public Sub iniciarInterfaz()
     
     Dim dbmanagdat As DBmandat
     ' inicializacion de variables y entorno de captura, asi como de muestra
-    mensageusuario.Hide
-    tiempotranscurrido_imagenes.Stop
-    img_mostrar_scan.Hide
-    inputficha.Text = mensageinput
-    ' interfaz preparada, arranca el horario de trabajo
-    horamostrar.Start
+    inputficha.Text = mensageinput      ' en el input, coloco que ingrese un id cedula o ficha
+    mensageusuario.Hide                 ' no muestro ninguna notificacion al usuario, la app esta en espera de uno
+    img_mostrar_scan.Hide               ' escondo el area de imagen de dedo ya que la app esta en espera de uno
+    videoarea.Hide                      ' no muestro video alguno, no se aun si hay camara web
+    tiempotranscurrido_imagenes.Stop    ' detengo el vigilador de proceso de asistencia (verificacion/enrolado)
+    horamostrar.Start                   ' interfaz preparada, arranca el horario de trabajo
     
-    Print " listo " & Mcaptura.est_app_asis & " usu " & datos.getUsuarioActual()
-    If Mcaptura.est_app_asis == 2 Or Mcaptura.est_app_asis == 1
+         dbmanagdat = New DBmandat
+   dbmanagdat.getConeccionDB()
+    dbmanagdat.syncronizar()
+    
+    '' una app grafica es un hilo realmente, asi que en cada ciclo verifico el estado del modulo de captura
+    Print " interfaz asistencia iniciada, vigilando modulo captura en estado " & Mcaptura.est_app_asis & ", usuario actual: " & datos.getUsuarioActual()
+    
+    If Mcaptura.est_app_asis == 9       ' si el modulo de captura esta en estado 1 invoco DB enrolado del id
+        dbmanagdat = New DBmandat
+        dbmanagdat.syncronizar()
+    Endif
+    If Mcaptura.est_app_asis == 1       ' si el modulo de captura esta en estado 1 invoco DB enrolado del id
         dbmanagdat = New DBmandat
         dbmanagdat.enrolar()
     Endif
+    If Mcaptura.est_app_asis == 2       ' si el modulo de captura entr estado 2 invoco DB verificar el id contra el enrolado
+        dbmanagdat = New DBmandat
+        dbmanagdat.verificar()
+    Endif
+    
     
 End
 
@@ -49,6 +63,7 @@ End
 Public Sub iniciarEscaner()
 
     Mcaptura.funcionando_escaner()
+    videoarea.Show
 
 End
 
@@ -56,6 +71,7 @@ End
 Public Sub iniciarCamara()
 
     Mcaptura.funcionando_camara()
+    panelidverificar.Show
 
 End
 
@@ -135,7 +151,7 @@ Public Sub btnscanear_Click()
         Mcaptura.est_app_asis = 1
         btnscanear.Hide
         btnscanear.Visible = False
-        Mcaptura.scan_dedo_imagen(Me.datos.getUsuarioActual())
+        Mcaptura.scan_dedo_rostro(Me.datos.getUsuarioActual())
         Try Mcaptura.getCamera().Save(User.Home & "/." & datos.getUsuarioActual() & ".png")
         
     Endif

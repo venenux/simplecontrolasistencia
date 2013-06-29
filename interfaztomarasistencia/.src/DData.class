@@ -1,139 +1,209 @@
 ' Gambas class file
 
-' Gambas class file, DData 
-' es una clase porque actua como contenedor, y 
+' Gambas class file, DData
+' es una clase porque actua como contenedor, y
 ' se crea una instancia por cada enrolamiento/alistamiento
 ' y cada contenedor es un usuario/trabajador a tomarsele asistencia
 ' cuando elproceso meure esta clase debe ser destruida, para borrar los datos
-' al reiniciar otro proceso(usuario/trabajador) 
+' al reiniciar otro proceso(usuario/trabajador)
 ' se crea una nueva instancia con datos nuevos (del nuevo usuario/traajador)
-
-
 
 '' imagen del usuario en proceso
 Private imagenencriptada64 As String
 
 Public Sub setImagenEncriptada64(img As String)
+
     imagenencriptada64 = img
+
 End
 
 Public Sub getImagenEncriptada64() As String
+
     Return imagenencriptada64
+
 End
 
 Public Sub getImagenDecriptada() As String
+
     Return UnBase64(imagenencriptada64)
+
 End
-
-
 
 '' usuario en proceso
 Private usuarioActual As String
 '' configura el nombre/ficha del usuario para manejar
 
 Public Sub setUsuarioActual(usuario As String)
+
     usuarioActual = usuario
+
 End
 '' obtiene el nombre/ficha del usuario para manejar
 
 Public Sub getUsuarioActual() As String
+
     Return usuarioActual
+
 End
-
-
 
 '' ubicacion del usuario en proceso
 Private ubicacionusuario As String
 '' asigna la ubicacion del usuario para manejar
 
 Public Sub setUbicacionUsuario(usuario As String)
+
     ubicacionusuario = usuario
+
 End
 '' obtiene la ubicacion del usuario para manejar
 
 Public Sub getUbicacionUsuario() As String
+
     Return ubicacionusuario
+
 End
-
-
 
 '' ruta de los datos de fprint (segun dispositivo) del proceso actual
 Private rutafprintdaya As String
 '' asigna la ubicacion del directorio de trabajo fprint segun dispositivo
 
 Public Sub setRutaFprintData(usuario As String)
+
     rutafprintdaya = usuario
+
 End
 '' obtiene la ubicacion del directorio de trabajo fprint segun dispositivo
 
 Public Sub getRutaFprintData() As String
+
     Return rutafprintdaya
+
 End
-
-
 
 '' camara dispositivo a usar del usuario en proceso
 Private camara As String
 '' asigna la camara dispositivo a usar para manejar
 
 Public Sub setCamaraDev(cam As String)
+
     camara = cam
+
 End
 '' obtiene la camara dispositivo a usar para manejar
 
 Public Sub getCamaraDev() As String
+
     Return camara
+
 End
-
-
 
 '' tamano de video de la camara del usuario en proceso
 Private camarasize As String
 '' asigna el tamano de video de la camara para manejar
 
 Public Sub setCamaraSize(cam As String)
+
     camarasize = cam
+
 End
 '' obtiene el tamano de video de la camara para manejar
 
 Public Sub getCamaraSize() As String
+
     Return camarasize
+
 End
-
-
 
 '' contypo de la DB en proceso
 Private contipo As String
 '' define el tipo de conexcion a db
 
 Public Sub setContipo(cam As String)
+
     contipo = cam
+
 End
 '' dice que tipo de conexcion se configuro si se configuro
 
 Public Sub getContipo() As String
+
     Return contipo
+
 End
 
+'' nombre de archivo a importar
+Private consolidadocsvexport As String
+'' define el nombre del archivo a importar/listado de usuarios/trabajadores, por defecto es consolidadotemp_export
 
+Public Sub setArchivoConsolidado(filecsv As String)
+
+    If filecsv == Null Or Trim(filecsv) == "" Then
+        consolidadocsvexport = "consolidadotemp_export"
+    Else
+        consolidadocsvexport = filecsv
+    Endif
+
+End
+'' nos revela el nombre del archivo a importar/listado de los usuarios/trabajadores
+
+Public Sub getArchivoConsolidado() As String
+
+    If consolidadocsvexport == Null Or (Trim(consolidadocsvexport) == "") Then
+        consolidadocsvexport = "consolidadotemp_export"
+    Endif
+    Return consolidadocsvexport
+
+End
+
+'' nombre de archivo a exportar
+Private registroscsvexport As String
+'' define el nombre del archivo a exportar de registros diarios de "hoy", por defecto es registrostemp_export
+
+Public Sub setArchivoRegistros(filecsv As String)
+
+    If filecsv == Null Or Trim(filecsv) == "" Then
+        registroscsvexport = "registrostemp_export"
+    Else
+        registroscsvexport = filecsv
+    Endif
+
+End
+'' da el nombre del archivo de registros del diario de "hoy"
+
+Public Sub getArchivoRegistros() As String
+
+    If registroscsvexport = Null Or Trim(registroscsvexport) == "" Then
+        registroscsvexport = "consolidadotemp_export"
+    Endif
+    Return registroscsvexport
+
+End
 
 '' data del los dedos del usuario en proceso
 Private datablob As Variant
 '' data encriptada de los dedos del usuario en proceso
 Private datablobcypt As Variant
-'' asigna al proceso actual del usuario un binario para asociarlo y trabajarlo
+'' asigna al proceso actual del usuario un binario fprint para asociarlo y trabajarlo
+
 Public Sub setDataBlob(datab As Variant)
+
     datablob = datab
+
 End
 '' no implementado aun
-Public Sub getDataBlobDecrypted() As Variant
-    Return UnBase64(datablob)
-End
-'' devuelve los datos del los digitos del usuario actual
-Public Sub getDataBlob() As String
-    Return datablob
-End
 
+Public Sub getDataBlobDecrypted() As Variant
+
+    Return UnBase64(datablob)
+
+End
+'' devuelve los datos del los digitos fprint del usuario actual
+
+Public Sub getDataBlob() As String
+
+    Return datablob
+
+End
 
 '' estado del enrollado en el proceso actual
 Private statusenrolado As Boolean

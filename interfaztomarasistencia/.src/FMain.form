@@ -3,6 +3,12 @@
 { Form Form
   MoveScaled(2.8571,2.8571,91,72)
   Icon = Picture["data/venenux.png"]
+  { img_mostrar_scan PictureBox
+    MoveScaled(17,0,60,44)
+  }
+  { tiempotranscurrido_imagenes #Timer
+    #MoveScaled(82,2.8571)
+  }
   { videoarea DrawingArea
     MoveScaled(19,-2,55,45)
     Cached = True
@@ -10,20 +16,14 @@
   { pintarvideo #Timer
     #MoveScaled(82,10)
   }
-  { img_mostrar_scan PictureBox
-    MoveScaled(17,0,60,44)
-  }
-  { tiempotranscurrido_imagenes #Timer
-    #MoveScaled(82,2.8571)
-  }
-  { horamostrar #Timer
-    #MoveScaled(82,60)
-  }
   { horalcd LCDLabel
     MoveScaled(9,61,72,10)
     Font = Font["+6"]
     Foreground = Color.TextForeground
     Text = ("horario")
+  }
+  { horamostrar #Timer
+    #MoveScaled(82,60)
   }
   { btnscanear Button
     MoveScaled(86,67,4.5714,4.5714)
@@ -35,7 +35,7 @@
     Font = Font["FreeSans,Bold,+5"]
     Text = ("mensageusuario")
   }
-  { Panel1 Panel
+  { panelidverificar Panel
     MoveScaled(14,45,66,8)
     Border = Border.Plain
   }
