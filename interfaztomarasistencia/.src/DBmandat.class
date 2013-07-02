@@ -1,11 +1,23 @@
 ' Gambas class file
 
-' Gambas module file
+'' clase de manejo de datos entre fuentes de datos (data sources class module management)
+'' 
+'' esta clase, abstrae y engloba funciones de inicio y preparacin de fuentes de datos (bases de datos)
+'' sus principales tareas son :
+'' a) ofrecer una coneccion a la DB local (sqlite3) si no existe, la cra y inicia sus tablas
+'' b) proveer de metodos de inicializacion (procesos sysasis_<tablas>) que crean sus estructuras de tablas
+'' c) proveer funciones de registro de asistencia
+'' d) permitir metodos de sincronizacion de los datos en nodos de origen si existen algunos
+'' e) verificar y mantener la integridad del mo0dulo en todo momento
+'' 
+'' notese que la verificacion de integridad solo se realiza en los procesos de inicializacion
+'' 
 
-Private hconn As Connection
-Private hconnpath As String
-Private hconndbnam As String
-Private hconniscon As Boolean
+Private hconn As Connection     ' objeto de la coneccion de base de datos local (registros o enrolamientos)
+Private pconn As Connection     ' objeto de la coneccion de base de datos remota (sincoronizacion o replicaicon)
+Private hconnpath As String     ' ruta de la base de datos local
+Private hconndbnam As String    ' nombre de la base de datos local
+Private hconniscon As Boolean   ' estado de el modulo, TRUE si la conecion esta viva y puede usarse
 
 
 '' modulo de apertura y conexcion a la db para guardar las imagenes escaneadas
@@ -55,7 +67,6 @@ Return hconn
 End
 
 
-'' procedimiento que inicializa la tabla de datos de listado de personal y sus huellas, en caso de no existir
 Public Function sysasis_listado_huella()
 
     ' Create TABLE sysasis_listado_huella(
@@ -197,21 +208,29 @@ End
 '' este proceso, inicia la tabla de lista de trabajadores/usuarios, y la pobla desde un archivo CSV o desde un regiastro por defecto
 Public Sub syncronizar() As Integer
 
-    Dim hFile As File
-    Dim wtable As Result    '
+    Dim hFile As File       ' archivo CSV que se leera con los datos
+    Dim wtable As Result    ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
     Dim wline As String     ' linea en procesamiento del CSV
-    Dim wdata As String[]   ' linea procesada del CSV
+    Dim wdata As String[]   ' linea procesada (columnas) del CSV
     Dim hTable As Table     ' tabla de la nomina listado desde esas lineas de procesamiento
 
+    Dim TIPNOM As Integer = 0, CODSUC As Integer = 1, CODGER As Integer = 2, CODDEP As Integer = 3
+    Dim FICHA As Integer = 4, NOMBRES As Integer = 5, APELLIDOS As Integer = 6, NOMBREEGEO1 As Integer = 7, ESTADO As Integer = 8
+    Dim Modalidad As Integer = 9, Turno As Integer = 14, Cedula As Integer = 15, Cedu As Integer = 16, ApeNomC As Integer = 17
+    Dim FSVacac As Integer = 8, FRVacac As Integer = 11, FSSuspen As Integer = 12, FRSuspen As Integer = 13
+
+    Dim dummycont As Integer, icols As Integer, iline As Integer
 
     If isConected() == False Then
-        Print "ver " & isConected()
         getConeccionDB()
     Endif
+
+    Try hconn.Tables.Remove("ConsolidadoTemp")
     
     If Not hconn.Tables.Exist("ConsolidadoTemp") Then
         hTable = hconn.Tables.Add("ConsolidadoTemp")
         With hTable.Fields
+            .Add("TIPNOM", db.String, 60, "999") ' TIPONOM VARCHAR(60) Default Null, - - PK: nunca hay dos trabajadores en la misma nomina
             .Add("CODSUC", db.String, 60, "999") ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo
             .Add("CODGER", db.String, 60, "999") ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar
             .Add("CODDEP", db.String, 60, Null) ' CODDEP VARCHAR(60) Default Null, - - codigo interno para verificacion y auditoria
@@ -220,7 +239,6 @@ Public Sub syncronizar() As Integer
             .Add("APELLIDOS", db.String, 60, Null) ' APELLIDOS VARCHAR(60)Null Default Null, - - apellido, ambos separados por un espacio
             .Add("NOMBREEGEO1", db.String, 60, Null) ' NOMBREEGEO1 VARCHAR(60)Null Default Null, - - codigo interno para reportes y auditoria de emergencia
             .Add("ESTADO", db.String, 60, Null) ' ESTADO VARCHAR(60)Null Default Null, - - activo, inactivo, suspendido, vacaciones, usado para verificacion y auditoria
-            .Add("CODCARGO", db.String, 60, Null) ' CODCARGO VARCHAR(10)Null Default Null, - - codigo de el cargo o puesto que desempeña
             .Add("Modalidad", db.String, 60, Null) ' Modalidad VARCHAR(60)Null Default Null, - - casa, base, periodo prueba, temporal, interno para determinar horario extendido
             .Add("FSVacac", db.String, 60, Null) ' FSVacac VARCHAR(60)Null Default Null, - - fecha inicio de vacaciones, necesario para verificaciones
             .Add("FRVacac", db.String, 60, Null) ' FRVacac VARCHAR(60)Null Default Null, - - fecha fin de vacaciones, necesario para ver si el tipo falto al reincorporarse
@@ -228,46 +246,81 @@ Public Sub syncronizar() As Integer
             .Add("FRSuspen", db.String, 60, Null) ' FRSuspen VARCHAR(60)Null Default Null, - - fecha fin de suspension, necesario para ver si el tipo falto
             .Add("Turno", db.String, 60, Null) ' Turno VARCHAR(60)Null Default Null, - - manana tarde noche, fin semana... necesario apra que no salga antes de time
             .Add("Cedula", db.String, 60, Null) ' Cedula VARCHAR(12)Null Default Null, - - cedula con el simbolo de nacionalidad separado por guion, solo Venezuela
+            .Add("Cedu", db.String, 60, "99999999") ' Cedu VARCHAR(12)Null Default Null, - - numero de la cedula es unico y no debe estar repetido
             .Add("ApeNomC", db.String, 60, Null) ' ApeNomC VARCHAR(60)Null Default Null, - - apellido y nombre, primero de cada uno separado por espacio
             .Add("fec_actualizacion", db.String, 60, Now) ' fec_actualizacion Date Not Null, - - fecha en que se altero los datos de esta tabla por ultima vez
             .Add("cod_usuario", db.String, 60, "systemas") ' cod_usuario VARCHAR(20)Null Default 'systemas' , -- codigo/usuario que altero los datos por ultima vez
         End With
-        hTable.PrimaryKey = ["FICHA", "CODGER"]
+        hTable.PrimaryKey = ["TIPNOM", "CODGER", "FICHA"]
         hTable.Update
     Endif
 
+    Print " archivo " & User.Home &/ FMain.datos.getArchivoConsolidado() & ".csv"
 
-    If Not Exist(User.Home & FMain.datos.getArchivoConsolidado()) Then
+    If Not Exist(User.Home &/ FMain.datos.getArchivoConsolidado() & ".csv") Then
         Message.Warning("No se encontro el archivo de datos de sincronizacion")
     Else
         ' procesamiento del archivo CSV, en un futuro este deberia solo enviar los cambiios
-        hFile = Open User.Home & FMain.datos.getArchivoConsolidado() For Read
+        hFile = Open User.Home &/ FMain.datos.getArchivoConsolidado() & ".csv" For Read
+        ' primero leemos solo la primera linea, para determinar si hay nombres de columnas
+        Seek #hFile, 0
+            dummycont = 0
+            Line Input #hFile, wline
+            wdata = Split(wline, ",")
+        'If wdata.Max == ApeNomC Then
+            For icols = 0 To wdata.Max
+                If wdata[icols] == "TIPNOM" Then
+                    TIPNOM = icols
+                Endif
+                If wdata[icols] == "CODSUC" Then
+                    CODSUC = icols
+                Endif
+                If wdata[icols] == "CODGER" Then
+                    CODGER = icols
+                Endif
+                If wdata[icols] == "CODDEP" Then
+                    CODDEP = icols
+                Endif
+                If wdata[icols] == "FICHA" Then
+                    FICHA = icols
+                Endif
+            Next
+            dummycont = dummycont + 1
+        'Endif
+        ' leyendola primera columna, leemos el resto
+        hconn.Begin
+        Seek #hFile, dummycont
         While Not Eof(hFile)
-           Line Input #hFile, wline
-           wdata = Split(wline, ",")
-           ' TODO: solo cargar los registeros nuevos , si alguno existe debo realizar update
-           wtable = hconn.Create("ConsolidadoTemp")
-           wtable["CODSUC"] = wdata[0] ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo
-           wtable["CODGER"] = wdata[1] ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar
-           wtable["CODDEP"] = wdata[2] ' CODDEP VARCHAR(60) Default Null, - - codigo interno para verificacion y auditoria
-           wtable["FICHA"] = wdata[3] ' FICHA VARCHAR(10)Null Default Null, - - identificador o licencia conducir, cedula sin letra de nacionalidad en caso Venezuela
-           wtable["NOMBRES"] = wdata[4] ' NOMBRES VARCHAR(60)Null Default Null, - - nombre, ambos separados por un espacio
-           wtable["APELLIDOS"] = wdata[5] ' APELLIDOS VARCHAR(60)Null Default Null, - - apellido, ambos separados por un espacio
-           wtable["NOMBREEGEO1"] = wdata[6] ' NOMBREEGEO1 VARCHAR(60)Null Default Null, - - codigo interno para reportes y auditoria de emergencia
-           wtable["ESTADO"] = wdata[7] ' ESTADO VARCHAR(60)Null Default Null, - - activo, inactivo, suspendido, vacaciones, usado para verificacion y auditoria
-           wtable["Modalidad"] = wdata[8] ' CODCARGO VARCHAR(10)Null Default Null, - - codigo de el cargo o puesto que desempeña
-           wtable["FSVacac"] = wdata[9] ' Modalidad VARCHAR(60)Null Default Null, - - casa, base, periodo prueba, temporal, interno para determinar horario extendido
-           wtable["FRVacac"] = wdata[10] ' FSVacac VARCHAR(60)Null Default Null, - - fecha inicio de vacaciones, necesario para verificaciones
-           wtable["FSSuspen"] = wdata[11] ' FRVacac VARCHAR(60)Null Default Null, - - fecha fin de vacaciones, necesario para ver si el tipo falto al reincorporarse
-           wtable["FRSuspen"] = wdata[12] ' FSSuspen VARCHAR(60)Null Default Null, - - fecha inicio de suspendido, necesario para verificaciones
-           wtable["Turno"] = wdata[13] ' Turno VARCHAR(60)Null Default Null, - - manana tarde noche, fin semana... necesario apra que no salga antes de time
-           wtable["Cedula"] = wdata[14] ' Cedula VARCHAR(12)Null Default Null, - - cedula con el simbolo de nacionalidad separado popr guion, solo Venezuela
-           wtable["ApeNomC"] = wdata[15] ' ApeNomC VARCHAR(60)Null Default Null, - - apellido y nombre, primero de cada uno separado por espacio
-           wtable.Update
+            Line Input #hFile, wline
+            wdata = Split(wline, ",")
+            ' TODO: solo cargar los registeros nuevos , si alguno existe debo realizar update
+            Print "procesando archivo linea " & dummycont & ": " & wdata[TIPNOM] & "," & wdata[CODSUC] & "," & wdata[FICHA]
+            wtable = hconn.Create("ConsolidadoTemp")
+            wtable["TIPNOM"] = wdata[TIPNOM] ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas
+            wtable["CODSUC"] = wdata[CODSUC] ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo
+            wtable["CODGER"] = wdata[CODGER] ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar
+            wtable["CODDEP"] = wdata[CODDEP] ' CODDEP VARCHAR(60) Default Null, - - codigo interno para verificacion y auditoria
+            wtable["FICHA"] = wdata[FICHA] ' FICHA VARCHAR(10)Null Default Null, - - identificador o licencia conducir, cedula sin letra de nacionalidad en caso Venezuela
+            'wtable["NOMBRES"] = wdata[NOMBRES] ' NOMBRES VARCHAR(60)Null Default Null, - - nombre, ambos separados por un espacio
+            'wtable["APELLIDOS"] = wdata[APELLIDOS] ' APELLIDOS VARCHAR(60)Null Default Null, - - apellido, ambos separados por un espacio
+            'wtable["NOMBREEGEO1"] = wdata[NOMBREEGEO1] ' NOMBREEGEO1 VARCHAR(60)Null Default Null, - - codigo interno para reportes y auditoria de emergencia
+            'wtable["ESTADO"] = wdata[ESTADO] ' ESTADO VARCHAR(60)Null Default Null, - - activo, inactivo, suspendido, vacaciones, usado para verificacion y auditoria
+            'wtable["Modalidad"] = wdata[Modalidad] ' Modalidad VARCHAR(60)Null Default Null, - - casa, base, periodo prueba, temporal, interno para determinar horario extendido
+            'wtable["FSVacac"] = wdata[FSVacac] ' FSVacac VARCHAR(60)Null Default Null, - - fecha inicio de vacaciones, necesario para verificaciones
+            'wtable["FRVacac"] = wdata[FRVacac] ' FRVacac VARCHAR(60)Null Default Null, - - fecha fin de vacaciones, necesario para ver si el tipo falto al reincorporarse
+            'wtable["FSSuspen"] = wdata[FSSuspen] ' FSSuspen VARCHAR(60)Null Default Null, - - fecha inicio de suspendido, necesario para verificaciones
+            'wtable["FRSuspen"] = wdata[FRSuspen] ' FRSuspen VARCHAR(60)Null Default Null, - - fecha fin de suspendido, necesario para verificaciones
+            'wtable["Turno"] = wdata[Turno] ' Turno VARCHAR(60)Null Default Null, - - manana tarde noche, fin semana... necesario apra que no salga antes de time
+            wtable["Cedula"] = wdata[5] 'wdata[Cedula] ' Cedula VARCHAR(12)Null Default Null, - - cedula con el simbolo de nacionalidad separado popr guion, solo Venezuela
+            wtable["Cedu"] = wdata[6] 'wdata[Cedu] ' Cedu VARCHAR(12)Null Default Null, - - numero unico del trabajador, en venezuela la cedula
+            'wtable["ApeNomC"] = wdata[ApeNomC] ' ApeNomC VARCHAR(60)Null Default Null, - - apellido y nombre, primero de cada uno separado por espacio
+            wtable.Update
+            dummycont = dummycont + 1
         Wend
+        hconn.Commit
         hFile.Close
     Endif
-    
+
 End
 
 '' empleada para verificar el correcto seguimiento de inicio de la gestin de datos, con true, cada proceso extra no fallaria

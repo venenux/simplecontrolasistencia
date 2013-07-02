@@ -12,21 +12,15 @@
 Private imagenencriptada64 As String
 
 Public Sub setImagenEncriptada64(img As String)
-
     imagenencriptada64 = img
-
 End
 
 Public Sub getImagenEncriptada64() As String
-
     Return imagenencriptada64
-
 End
 
 Public Sub getImagenDecriptada() As String
-
     Return UnBase64(imagenencriptada64)
-
 End
 
 '' usuario en proceso
@@ -34,16 +28,12 @@ Private usuarioActual As String
 '' configura el nombre/ficha del usuario para manejar
 
 Public Sub setUsuarioActual(usuario As String)
-
     usuarioActual = usuario
-
 End
 '' obtiene el nombre/ficha del usuario para manejar
 
 Public Sub getUsuarioActual() As String
-
     Return usuarioActual
-
 End
 
 '' ubicacion del usuario en proceso
@@ -51,16 +41,12 @@ Private ubicacionusuario As String
 '' asigna la ubicacion del usuario para manejar
 
 Public Sub setUbicacionUsuario(usuario As String)
-
     ubicacionusuario = usuario
-
 End
 '' obtiene la ubicacion del usuario para manejar
 
 Public Sub getUbicacionUsuario() As String
-
     Return ubicacionusuario
-
 End
 
 '' ruta de los datos de fprint (segun dispositivo) del proceso actual
@@ -68,16 +54,12 @@ Private rutafprintdaya As String
 '' asigna la ubicacion del directorio de trabajo fprint segun dispositivo
 
 Public Sub setRutaFprintData(usuario As String)
-
     rutafprintdaya = usuario
-
 End
 '' obtiene la ubicacion del directorio de trabajo fprint segun dispositivo
 
 Public Sub getRutaFprintData() As String
-
     Return rutafprintdaya
-
 End
 
 '' camara dispositivo a usar del usuario en proceso
@@ -85,16 +67,12 @@ Private camara As String
 '' asigna la camara dispositivo a usar para manejar
 
 Public Sub setCamaraDev(cam As String)
-
     camara = cam
-
 End
 '' obtiene la camara dispositivo a usar para manejar
 
 Public Sub getCamaraDev() As String
-
     Return camara
-
 End
 
 '' tamano de video de la camara del usuario en proceso
@@ -102,81 +80,90 @@ Private camarasize As String
 '' asigna el tamano de video de la camara para manejar
 
 Public Sub setCamaraSize(cam As String)
-
     camarasize = cam
-
 End
 '' obtiene el tamano de video de la camara para manejar
 
 Public Sub getCamaraSize() As String
-
     Return camarasize
-
 End
 
-'' contypo de la DB en proceso
+'' tipo de la conexcion de datos local de la DB en proceso, sqlite3 por defecto
 Private contipo As String
 '' define el tipo de conexcion a db
 
-Public Sub setContipo(cam As String)
-
+Public Sub setContipoLo(cam As String)
     contipo = cam
-
 End
 '' dice que tipo de conexcion se configuro si se configuro
 
-Public Sub getContipo() As String
-
+Public Sub getContipoLo() As String
     Return contipo
-
 End
+
+'' tipo de la conexcion de datos remota de la DB en proceso, postgres por defecto
+Private contipoop As String
+'' define el tipo de conexcion a db nodo remota/origenes
+
+Public Sub setContipoOp(cam As String)
+    contipoop = cam
+End
+'' dice que tipo de conexcion remota/origenes se configuro si se hizo
+
+Public Sub getContipoOp() As String
+    Return contipoop
+End
+
+'' nodo o ip donde se replica/optiene datos listado de empleados/usuarios
+Private hostop As String
+'' define el nodo o ip donde se replica/optiene datos listado de empleados/usuarios
+
+Public Sub setHostOP(cam As String)
+    hostop = cam
+End
+
+
+'' dice que nodo o ip donde se replica/optiene datos listado de empleados/usuarios
+Public Sub getHostOP() As String
+    Return hostop
+End
+
+
 
 '' nombre de archivo a importar
 Private consolidadocsvexport As String
 '' define el nombre del archivo a importar/listado de usuarios/trabajadores, por defecto es consolidadotemp_export
-
 Public Sub setArchivoConsolidado(filecsv As String)
-
     If filecsv == Null Or Trim(filecsv) == "" Then
         consolidadocsvexport = "consolidadotemp_export"
     Else
         consolidadocsvexport = filecsv
     Endif
-
 End
 '' nos revela el nombre del archivo a importar/listado de los usuarios/trabajadores
-
 Public Sub getArchivoConsolidado() As String
-
     If consolidadocsvexport == Null Or (Trim(consolidadocsvexport) == "") Then
         consolidadocsvexport = "consolidadotemp_export"
     Endif
     Return consolidadocsvexport
-
 End
 
 '' nombre de archivo a exportar
 Private registroscsvexport As String
 '' define el nombre del archivo a exportar de registros diarios de "hoy", por defecto es registrostemp_export
-
 Public Sub setArchivoRegistros(filecsv As String)
-
     If filecsv == Null Or Trim(filecsv) == "" Then
         registroscsvexport = "registrostemp_export"
     Else
         registroscsvexport = filecsv
     Endif
-
 End
 '' da el nombre del archivo de registros del diario de "hoy"
-
 Public Sub getArchivoRegistros() As String
-
     If registroscsvexport = Null Or Trim(registroscsvexport) == "" Then
-        registroscsvexport = "consolidadotemp_export"
+        registroscsvexport = "registrostemp_export"
     Endif
     Return registroscsvexport
-
 End
 
 '' data del los dedos del usuario en proceso
@@ -184,34 +171,25 @@ Private datablob As Variant
 '' data encriptada de los dedos del usuario en proceso
 Private datablobcypt As Variant
 '' asigna al proceso actual del usuario un binario fprint para asociarlo y trabajarlo
-
 Public Sub setDataBlob(datab As Variant)
-
     datablob = datab
-
 End
 '' no implementado aun
-
 Public Sub getDataBlobDecrypted() As Variant
-
     Return UnBase64(datablob)
-
 End
 '' devuelve los datos del los digitos fprint del usuario actual
-
 Public Sub getDataBlob() As String
-
     Return datablob
-
 End
 
 '' estado del enrollado en el proceso actual
 Private statusenrolado As Boolean
-
+'' define el usuario/trabajador actual como parte de la lista, aunque no si admitido, validado o suspendido
 Public Sub setStatusEnrolado(datab As Boolean)
     statusenrolado = datab
 End
-
+'' el usuario/empleado actual esta en la lista, aunque no si habilitado, vacaciones o suspendido
 Public Sub itsEnrolado() As Boolean
     Return statusenrolado
 End
@@ -220,11 +198,11 @@ End
 
 '' estado del verificado en el proceso actual
 Private statusverificado As Boolean
-
+'' asignar y poner verdadero el usuario/empleado actual del proceso, como admitido
 Public Sub setStatusVerificado(datab As Boolean)
     statusverificado = datab
 End
-
+'' dice si el usuario/empleado actual del proceso, esta admitido como TRUE, sino false no se le permite acceso
 Public Sub itsVerificado() As Boolean
     Return statusverificado
 End

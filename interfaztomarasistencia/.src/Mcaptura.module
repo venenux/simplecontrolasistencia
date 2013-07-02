@@ -135,9 +135,14 @@ Public Sub funcionando_escaner()
     ' 2 = <tipo> : 00000063 es dummy
     ' 3 = rutafiledata =<HOME>/.fprint/prints/<rutadevice>/<dedo> generalemnte debe ser obviado en modo dummy
     ' 4 = nombreimagen = noencontrado.pgm o usuarioid.pgm
-
-    FMain.datos.setRutaFprintData(User.Home & "/" & LineasProcesamiento[3])
-    FMain.datos.setDataBlob(Null)
+    If LineasProcesamiento.Length <= 2 Then
+        Print " backend error " & LineasProcesamiento[0]
+        Message.Error("El software de escaneo, esta dañado, ¿se apago la maquina mal? ¿se instalo el software mal?")
+        est_app_asis = 3
+    Else
+        FMain.datos.setRutaFprintData(User.Home & "/" & LineasProcesamiento[3])
+        FMain.datos.setDataBlob(Null)
+    Endif
 
 End
 
