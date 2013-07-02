@@ -20,6 +20,8 @@ typedef int bool;
 /** main tiene soporte de argumentos, se usara para manejo de linea de comandos mas adelante */
 int main(int argc, char **argv)
 {
+	printf("hola");
+
 	char *nombreimagen = "noencontrado.pgm";
 	char *numerodedo = "1"; /* LEFT THUMB ; pulgar izquierdo */
 	int operacion = 0;
@@ -130,7 +132,7 @@ int main(int argc, char **argv)
 
 	unsigned char *dvcname; /* para informamos el nombre, id y devtype del dispositivo si encontramos uno */
 	if ( dummy == FALSE )
-		*dvcname = fp_driver_get_full_name(dvc); /* opcional: ver el nombre del scaner humanamente */
+		dvcname = fp_driver_get_full_name(dvc); /* opcional: ver el nombre del scaner humanamente */
 	else
 		dvcname = "Dummy/Falso Quien carizo eres tu finger/dedo scaner 0000";
 
