@@ -8,6 +8,36 @@
 ' al reiniciar otro proceso(usuario/trabajador)
 ' se crea una nueva instancia con datos nuevos (del nuevo usuario/traajador)
 
+
+'' estado que dice si ya inicio DB local
+Private dblocallista As Boolean
+'' define el usuario/trabajador actual como parte de la lista, aunque no si admitido, validado o suspendido
+Public Sub setDbLocalLista(datab As Boolean)
+    dblocallista = datab
+End
+'' el usuario/empleado actual esta en la lista, aunque no si habilitado, vacaciones o suspendido
+Public Sub itsDbLocalLista() As Boolean
+    Return dblocallista
+End
+
+
+'' define si se manejara el archivo listado compreso/encriptado
+Private lrzipxz As Boolean
+'' asigna si se manejara compreso o no el archivo de la lista
+Public Sub setListaCompresa(datab As String)
+    If Comp(datab, "true", 1) == 0 Or Comp(datab, "1", 1) == 0 Then
+        lrzipxz = True
+    Else
+        lrzipxz = False
+    Endif
+End
+''
+Public Sub itsListaCompresa() As Boolean
+    Return lrzipxz
+End
+
+
+
 '' imagen del usuario en proceso
 Private imagenencriptada64 As String
 
@@ -129,13 +159,25 @@ Public Sub getHostOP() As String
 End
 
 
+'' nombre base del archivo importar
+Private consolidadonombrebasecsv As String
+Public Sub getArchivoConsoNombreBase() As String
+    consolidadonombrebasecsv = "consolidadotemp_export_"
+    Return consolidadonombrebasecsv
+End
+'' nombre base del archivo exportar
+Private registrosnombrebasecsv As String
+Public Sub getArchivoRegisNombreBase() As String
+    registrosnombrebasecsv = "registrostemp_export_"
+    Return registrosnombrebasecsv
+End
 
 '' nombre de archivo a importar
 Private consolidadocsvexport As String
 '' define el nombre del archivo a importar/listado de usuarios/trabajadores, por defecto es consolidadotemp_export
 Public Sub setArchivoConsolidado(filecsv As String)
     If filecsv == Null Or Trim(filecsv) == "" Then
-        consolidadocsvexport = "consolidadotemp_export"
+        consolidadocsvexport = getArchivoConsoNombreBase() & Format$(Now, "yyyymmdd")
     Else
         consolidadocsvexport = filecsv
     Endif
@@ -143,7 +185,7 @@ End
 '' nos revela el nombre del archivo a importar/listado de los usuarios/trabajadores
 Public Sub getArchivoConsolidado() As String
     If consolidadocsvexport == Null Or (Trim(consolidadocsvexport) == "") Then
-        consolidadocsvexport = "consolidadotemp_export"
+        consolidadocsvexport = getArchivoConsoNombreBase() & Format$(Now, "yyyymmdd")
     Endif
     Return consolidadocsvexport
 End
@@ -153,7 +195,7 @@ Private registroscsvexport As String
 '' define el nombre del archivo a exportar de registros diarios de "hoy", por defecto es registrostemp_export
 Public Sub setArchivoRegistros(filecsv As String)
     If filecsv == Null Or Trim(filecsv) == "" Then
-        registroscsvexport = "registrostemp_export"
+        registroscsvexport = getArchivoRegisNombreBase() & Format$(Now, "yyyymmdd")
     Else
         registroscsvexport = filecsv
     Endif
@@ -161,7 +203,7 @@ End
 '' da el nombre del archivo de registros del diario de "hoy"
 Public Sub getArchivoRegistros() As String
     If registroscsvexport = Null Or Trim(registroscsvexport) == "" Then
-        registroscsvexport = "registrostemp_export"
+        registroscsvexport = getArchivoRegisNombreBase() & Format$(Now, "yyyymmdd")
     Endif
     Return registroscsvexport
 End

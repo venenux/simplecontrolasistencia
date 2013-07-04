@@ -67,13 +67,14 @@ Return hconn
 End
 
 
-Public Function sysasis_listado_huella()
+'' este, inicia estructura de datos para poder listar las huellas dactilares
+Public Function sysasis_init_listado_huella()
 
     ' Create TABLE sysasis_listado_huella(
     '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI SINO numero, en VNZ es CI
     '   fec_registro Date Not Null, - - fecha del registro de dia de su huella dactilar
-    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad
-    '   hex_huelladactilar BLOB Not Null, - - huella dactilar tomada
+    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad, es CODSUC/CODGER
+    '   hex_huelladactilar BLOB Not Null, - - huella dactilar tomada, es HEXFING
     '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez
     '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
     '   PRIMARY KEY(cod_ficha, fec_registro, cod_ubicacion, hex_huelladactilar),
@@ -90,14 +91,15 @@ Public Function sysasis_listado_huella()
     If Not hconn.Tables.Exist("sysasis_listado_huella") Then
         hTable = hconn.Tables.Add("sysasis_listado_huella")
         With hTable.Fields
-            .Add("cod_ficha", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+            .Add("id", db.Serial) ' para unicidad
+            .Add("cod_ficha", db.String, 20)   ' FICHA/Cedu,  el id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
             .Add("fec_registro", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
-            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad
-            .Add("hex_huelladactilar", db.Blob,, Null)  ' huella dactilar del usuario/trabajado ficha
+            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad, es CODSUC/CODGER
+            .Add("hex_huelladactilar", db.Blob,, Null)  ' huella dactilar del usuario/trabajado ficha, es HEXFING
             .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
             .Add("cod_usuasys", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
         End With
-        hTable.PrimaryKey = ["cod_ficha", "cod_ubicacion"]
+        hTable.PrimaryKey = ["id"] ' no es necesario , es solo lectura
         hTable.Update
     Endif
     Else
@@ -107,14 +109,15 @@ Public Function sysasis_listado_huella()
 End
 
 
-'' proceso de inicializacion de DB, tabla de enrolamiento, si no existe en la DB una tabla de enrolamiento, se crea
-Public Function sysasis_enrolamiento_huella()
+'' proceso de inicializacion de DB, tabla de enrolamiento, si no existe en la DB una tabla de enrolamiento, se crea.
+'' este, inicia estructura de datos para poder enrolar nuevas huellas dactilares
+Public Function sysasis_init_enrolamiento_huella()
 
     ' Create TABLE sysasis_enrolamiento_huella(
-    '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+    '   cod_ficha VARCHAR(20) Not Null, - - FICHA/Cedu, el id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
     '   fec_registro Date Not Null, - - fecha del registro de dia de su huella dactilar
-    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad
-    '   hex_huelladactilar BLOB Not Null, - - huella dactilar tomada
+    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad, es CODSUC/CODGER
+    '   hex_huelladactilar BLOB Not Null, - - huella dactilar tomada es HEXFING
     '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez
     '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
     '   PRIMARY KEY(cod_ficha, fec_registro, cod_ubicacion, hex_huelladactilar),
@@ -130,14 +133,14 @@ Public Function sysasis_enrolamiento_huella()
     If Not hconn.Tables.Exist("sysasis_enrolamiento_huella") Then
         hTable = hconn.Tables.Add("sysasis_enrolamiento_huella")
         With hTable.Fields
-            .Add("cod_ficha", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+            .Add("cod_ficha", db.String, 20)   ' FICHA/Cedu, el id del trabajador en VNZ es numero de la CI
             .Add("fec_registro", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
-            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad
-            .Add("hex_huelladactilar", db.Blob,, Null)  ' huella dactilar del usuario/trabajado ficha
+            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad, es CODSUC/CODGER
+            .Add("hex_huelladactilar", db.Blob,, Null)  ' huella dactilar del usuario/trabajado ficha, HEXFING
             .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
             .Add("cod_usuasys", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
         End With
-        hTable.PrimaryKey = ["cod_ficha", "cod_ubicacion"]
+        hTable.PrimaryKey = ["cod_ficha", "cod_ubicacion", "fec_registro"]
         hTable.Update
     Endif
 
@@ -185,7 +188,7 @@ Public Function sysasis_registro()
         With hTable.Fields
             .Add("cod_ficha", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
             .Add("fec_registro", db.Date,, Null)   ' fecha del registro de dia de su huella dactilar
-            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad
+            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad es CODSUC/CODGER
             .Add("num_contador", db.Integer,, 0)      ' contador de fotos, si va a distintos lugares debe marcar salida = 4
             .Add("horaentrada", db.Integer,, 0)      '
             .Add("minuentrada", db.Integer,, 0)      '
@@ -194,7 +197,7 @@ Public Function sysasis_registro()
             .Add("minureincor", db.Integer,, 0)      '
             .Add("horasalida", db.Integer,, 0)      '
             .Add("minusalida", db.Integer,, 0)      '
-            .Add("hex_huelladactilar", db.Blob,, Null)  ' huella dactilar del usuario/trabajado ficha
+            .Add("hex_huelladactilar", db.Blob,, Null)  ' huella dactilar del usuario/trabajado ficha, opcional, es HEXFING
             .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
             .Add("cod_usuasys", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
         End With
@@ -205,127 +208,214 @@ Public Function sysasis_registro()
 End
 
 
+
 '' este proceso, inicia la tabla de lista de trabajadores/usuarios, y la pobla desde un archivo CSV o desde un regiastro por defecto
+'' este proceso obtiene la lista de empleados/usuarios a autenticar, completa (fuerza bruta)
+'' retrae el fichero compreso/encriptado, detecta nombres de campos e inserta los registros
+'' una vez realizado esto borra el fichero desencriptado, los archivos son movidos por fecha
+'' la fecha es el numero, no importando la de la maquina, la ultima fecha sera siempre el numero mayor
 Public Sub syncronizar() As Integer
 
+    Dim namFile As String   ' nombre del archivo CVS que trae la lista actualizada
+    Dim namComp As New Uncompress   ' archivo comprimido
     Dim hFile As File       ' archivo CSV que se leera con los datos
     Dim wtable As Result    ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
     Dim wline As String     ' linea en procesamiento del CSV
     Dim wdata As String[]   ' linea procesada (columnas) del CSV
     Dim hTable As Table     ' tabla de la nomina listado desde esas lineas de procesamiento
+    Dim numDate As Integer  ' numero formado por YYYYMMDD este se ira reduciendo hasta encontrar un archivo
+    Dim extFile As String       ' extension del archivo dependiendo si esta compreso
 
-    Dim TIPNOM As Integer = 0, CODSUC As Integer = 1, CODGER As Integer = 2, CODDEP As Integer = 3
-    Dim FICHA As Integer = 4, NOMBRES As Integer = 5, APELLIDOS As Integer = 6, NOMBREEGEO1 As Integer = 7, ESTADO As Integer = 8
-    Dim Modalidad As Integer = 9, Turno As Integer = 14, Cedula As Integer = 15, Cedu As Integer = 16, ApeNomC As Integer = 17
-    Dim FSVacac As Integer = 8, FRVacac As Integer = 11, FSSuspen As Integer = 12, FRSuspen As Integer = 13
+    Dim TIPNOM As Integer = 0, CODSUC As Integer = 1, CODGER As Integer = 2
+    Dim FICHA As Integer = 3, NOMBRES As Integer = 4, APELLIDOS As Integer = 5, ESTADO As Integer = 6
+    Dim Cedula As Integer = 7, Cedu As Integer = 8, HEXFING As Integer = 9
 
     Dim dummycont As Integer, icols As Integer, iline As Integer
+    Dim dummyword As String     ' usado para ir analizando cada celada del archivo csv
+    Dim dummyquer As String     ' usado para efectuar querys
+    Dim fileexits As Boolean = False
 
+    
+    ' preparacion de la coneccion de base de datos
     If isConected() == False Then
         getConeccionDB()
     Endif
-
-    Try hconn.Tables.Remove("ConsolidadoTemp")
     
-    If Not hconn.Tables.Exist("ConsolidadoTemp") Then
-        hTable = hconn.Tables.Add("ConsolidadoTemp")
-        With hTable.Fields
-            .Add("TIPNOM", db.String, 60, "999") ' TIPONOM VARCHAR(60) Default Null, - - PK: nunca hay dos trabajadores en la misma nomina
-            .Add("CODSUC", db.String, 60, "999") ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo
-            .Add("CODGER", db.String, 60, "999") ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar
-            .Add("CODDEP", db.String, 60, Null) ' CODDEP VARCHAR(60) Default Null, - - codigo interno para verificacion y auditoria
-            .Add("FICHA", db.String, 60, "99999999") ' FICHA VARCHAR(10)Null Default Null, - - identificador o licencia conducir, cedula sin letra de nacionalidad en caso Venezuela
-            .Add("NOMBRES", db.String, 60, Null) ' NOMBRES VARCHAR(60)Null Default Null, - - nombre, ambos separados por un espacio
-            .Add("APELLIDOS", db.String, 60, Null) ' APELLIDOS VARCHAR(60)Null Default Null, - - apellido, ambos separados por un espacio
-            .Add("NOMBREEGEO1", db.String, 60, Null) ' NOMBREEGEO1 VARCHAR(60)Null Default Null, - - codigo interno para reportes y auditoria de emergencia
-            .Add("ESTADO", db.String, 60, Null) ' ESTADO VARCHAR(60)Null Default Null, - - activo, inactivo, suspendido, vacaciones, usado para verificacion y auditoria
-            .Add("Modalidad", db.String, 60, Null) ' Modalidad VARCHAR(60)Null Default Null, - - casa, base, periodo prueba, temporal, interno para determinar horario extendido
-            .Add("FSVacac", db.String, 60, Null) ' FSVacac VARCHAR(60)Null Default Null, - - fecha inicio de vacaciones, necesario para verificaciones
-            .Add("FRVacac", db.String, 60, Null) ' FRVacac VARCHAR(60)Null Default Null, - - fecha fin de vacaciones, necesario para ver si el tipo falto al reincorporarse
-            .Add("FSSuspen", db.String, 60, Null) ' FSSuspen VARCHAR(60)Null Default Null, - - fecha inicio de suspendido, necesario para verificaciones
-            .Add("FRSuspen", db.String, 60, Null) ' FRSuspen VARCHAR(60)Null Default Null, - - fecha fin de suspension, necesario para ver si el tipo falto
-            .Add("Turno", db.String, 60, Null) ' Turno VARCHAR(60)Null Default Null, - - manana tarde noche, fin semana... necesario apra que no salga antes de time
-            .Add("Cedula", db.String, 60, Null) ' Cedula VARCHAR(12)Null Default Null, - - cedula con el simbolo de nacionalidad separado por guion, solo Venezuela
-            .Add("Cedu", db.String, 60, "99999999") ' Cedu VARCHAR(12)Null Default Null, - - numero de la cedula es unico y no debe estar repetido
-            .Add("ApeNomC", db.String, 60, Null) ' ApeNomC VARCHAR(60)Null Default Null, - - apellido y nombre, primero de cada uno separado por espacio
-            .Add("fec_actualizacion", db.String, 60, Now) ' fec_actualizacion Date Not Null, - - fecha en que se altero los datos de esta tabla por ultima vez
-            .Add("cod_usuario", db.String, 60, "systemas") ' cod_usuario VARCHAR(20)Null Default 'systemas' , -- codigo/usuario que altero los datos por ultima vez
-        End With
-        hTable.PrimaryKey = ["TIPNOM", "CODGER", "FICHA"]
-        hTable.Update
-    Endif
-
-    Print " archivo " & User.Home &/ FMain.datos.getArchivoConsolidado() & ".csv"
-
-    If Not Exist(User.Home &/ FMain.datos.getArchivoConsolidado() & ".csv") Then
-        Message.Warning("No se encontro el archivo de datos de sincronizacion")
+    If FMain.datos.itsListaCompresa() Then
+        extFile = ".csv.cryte"
     Else
-        ' procesamiento del archivo CSV, en un futuro este deberia solo enviar los cambiios
-        hFile = Open User.Home &/ FMain.datos.getArchivoConsolidado() & ".csv" For Read
-        ' primero leemos solo la primera linea, para determinar si hay nombres de columnas
-        Seek #hFile, 0
-            dummycont = 0
-            Line Input #hFile, wline
-            wdata = Split(wline, ",")
-        'If wdata.Max == ApeNomC Then
-            For icols = 0 To wdata.Max
-                If wdata[icols] == "TIPNOM" Then
-                    TIPNOM = icols
-                Endif
-                If wdata[icols] == "CODSUC" Then
-                    CODSUC = icols
-                Endif
-                If wdata[icols] == "CODGER" Then
-                    CODGER = icols
-                Endif
-                If wdata[icols] == "CODDEP" Then
-                    CODDEP = icols
-                Endif
-                If wdata[icols] == "FICHA" Then
-                    FICHA = icols
-                Endif
-            Next
-            dummycont = dummycont + 1
-        'Endif
-        ' leyendola primera columna, leemos el resto
-        hconn.Begin
-        Seek #hFile, dummycont
-        While Not Eof(hFile)
-            Line Input #hFile, wline
-            wdata = Split(wline, ",")
-            ' TODO: solo cargar los registeros nuevos , si alguno existe debo realizar update
-            Print "procesando archivo linea " & dummycont & ": " & wdata[TIPNOM] & "," & wdata[CODSUC] & "," & wdata[FICHA]
-            wtable = hconn.Create("ConsolidadoTemp")
-            wtable["TIPNOM"] = wdata[TIPNOM] ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas
-            wtable["CODSUC"] = wdata[CODSUC] ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo
-            wtable["CODGER"] = wdata[CODGER] ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar
-            wtable["CODDEP"] = wdata[CODDEP] ' CODDEP VARCHAR(60) Default Null, - - codigo interno para verificacion y auditoria
-            wtable["FICHA"] = wdata[FICHA] ' FICHA VARCHAR(10)Null Default Null, - - identificador o licencia conducir, cedula sin letra de nacionalidad en caso Venezuela
-            'wtable["NOMBRES"] = wdata[NOMBRES] ' NOMBRES VARCHAR(60)Null Default Null, - - nombre, ambos separados por un espacio
-            'wtable["APELLIDOS"] = wdata[APELLIDOS] ' APELLIDOS VARCHAR(60)Null Default Null, - - apellido, ambos separados por un espacio
-            'wtable["NOMBREEGEO1"] = wdata[NOMBREEGEO1] ' NOMBREEGEO1 VARCHAR(60)Null Default Null, - - codigo interno para reportes y auditoria de emergencia
-            'wtable["ESTADO"] = wdata[ESTADO] ' ESTADO VARCHAR(60)Null Default Null, - - activo, inactivo, suspendido, vacaciones, usado para verificacion y auditoria
-            'wtable["Modalidad"] = wdata[Modalidad] ' Modalidad VARCHAR(60)Null Default Null, - - casa, base, periodo prueba, temporal, interno para determinar horario extendido
-            'wtable["FSVacac"] = wdata[FSVacac] ' FSVacac VARCHAR(60)Null Default Null, - - fecha inicio de vacaciones, necesario para verificaciones
-            'wtable["FRVacac"] = wdata[FRVacac] ' FRVacac VARCHAR(60)Null Default Null, - - fecha fin de vacaciones, necesario para ver si el tipo falto al reincorporarse
-            'wtable["FSSuspen"] = wdata[FSSuspen] ' FSSuspen VARCHAR(60)Null Default Null, - - fecha inicio de suspendido, necesario para verificaciones
-            'wtable["FRSuspen"] = wdata[FRSuspen] ' FRSuspen VARCHAR(60)Null Default Null, - - fecha fin de suspendido, necesario para verificaciones
-            'wtable["Turno"] = wdata[Turno] ' Turno VARCHAR(60)Null Default Null, - - manana tarde noche, fin semana... necesario apra que no salga antes de time
-            wtable["Cedula"] = wdata[5] 'wdata[Cedula] ' Cedula VARCHAR(12)Null Default Null, - - cedula con el simbolo de nacionalidad separado popr guion, solo Venezuela
-            wtable["Cedu"] = wdata[6] 'wdata[Cedu] ' Cedu VARCHAR(12)Null Default Null, - - numero unico del trabajador, en venezuela la cedula
-            'wtable["ApeNomC"] = wdata[ApeNomC] ' ApeNomC VARCHAR(60)Null Default Null, - - apellido y nombre, primero de cada uno separado por espacio
-            wtable.Update
-            dummycont = dummycont + 1
-        Wend
-        hconn.Commit
-        hFile.Close
+        extFile = ".csv"
     Endif
+
+    ' inicializacion de la lista matutina, esta lista solo se debe actualizar si hay archivo nuevo.
+    numDate = Val(Format$(Now, "yyyymmdd"))
+    namFile = User.Home &/ FMain.datos.getArchivoConsolidado() & extFile
+
+    ' verificacion de si hay actualizacion de la lista de empleados, sino no procedo a usar alguno antiguo
+    If Not Exist(namFile) Then
+        fileexits = False
+        While fileexits == False
+          numDate = numDate - 1
+          namFile = User.Home &/ FMain.datos.getArchivoConsoNombreBase() & numDate & extFile
+          If Exist(namFile) Then
+              Print "encontrado archivo viejo " & namFile
+              fileexits = True
+          Endif
+          If numDate = 20121231 Then
+              Message.Error("No se encontro datos de sincronizacion al dia, consulte a sistemas. \n" 
+              "\n\nNo se puede tomar asistencia\n\n"
+              "Debe existir un archivo similar a " & namFile & " como minimo.")
+              Return -1
+          Endif
+        Wend
+    Else
+        fileexits = True ' si el archivo existe a la primera la lista esta al dia
+    Endif
+    
+    If FMain.datos.itsListaCompresa() Then
+        extFile = ".cvs"
+        namComp.Type = "bzlib2"
+        namComp.File(namFile, User.Home &/ FMain.datos.getArchivoConsoNombreBase() & numDate & extFile)
+        namFile = User.Home &/ FMain.datos.getArchivoConsoNombreBase() & numDate & extFile
+    Endif
+        
+    If fileexits Then
+        
+        'hay archivos nuevos, hay gente nueva, por ende se borra la tabla y se crea nueva
+        hconn.Begin
+            Try hconn.Tables.Remove("ConsolidadoTemp")
+            If Not hconn.Tables.Exist("ConsolidadoTemp") Then
+                hTable = hconn.Tables.Add("ConsolidadoTemp")
+                With hTable.Fields
+                    .Add("TIPNOM", db.String, 60, "999") ' TIPONOM VARCHAR(60) Default Null, - - PK: nunca hay dos trabajadores en la misma nomina
+                    .Add("CODSUC", db.String, 60, "999") ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo
+                    .Add("CODGER", db.String, 60, "999") ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar
+                    .Add("FICHA", db.String, 60, "99999999") ' FICHA VARCHAR(10)Null Default Null, - - identificador o licencia conducir, cedula sin letra de nacionalidad en caso Venezuela
+                    .Add("NOMBRES", db.String, 60, Null) ' NOMBRES VARCHAR(60)Null Default Null, - - nombre, ambos separados por un espacio
+                    .Add("APELLIDOS", db.String, 60, Null) ' APELLIDOS VARCHAR(60)Null Default Null, - - apellido, ambos separados por un espacio
+                    .Add("ESTADO", db.String, 60, Null) ' ESTADO VARCHAR(60)Null Default Null, - - activo, inactivo, suspendido, vacaciones, usado para verificacion y auditoria
+                    .Add("Cedula", db.String, 60, "99999999") ' Cedu VARCHAR(12)Null Default Null, - - numero de la cedula es unico y no debe estar repetido
+                    .Add("HEXFING", db.Blob,, Null) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse
+                    .Add("fec_actualizacion", db.String, 60, Now) ' fec_actualizacion Date Not Null, - - fecha en que se altero los datos de esta tabla por ultima vez
+                    .Add("cod_usuario", db.String, 60, "systemas") ' cod_usuario VARCHAR(20)Null Default 'systemas' , -- codigo/usuario que altero los datos por ultima vez
+                End With
+                hTable.PrimaryKey = ["TIPNOM", "CODSUC", "CODGER", "FICHA", "Cedula"] ' cedula no es pk, debe ser cedu
+                hTable.Update
+            Endif
+            
+        hconn.Commit
+            
+            ' procesamiento del archivo CSV, en un futuro este deberia solo enviar los cambiios
+            hFile = Open namFile For Read
+            ' primero leemos solo la primera linea, para determinar si hay nombres de columnas
+            dummycont = 0
+            Seek #hFile, dummycont
+                Line Input #hFile, wline
+                wdata = Split(wline, ",")
+                ' recorro para ver si hay cabeceras, sino se usan las por defecto
+                For icols = 0 To wdata.Max
+                    ' tomo la celda actual en icols
+                    dummyword = celdalimpia(wdata[icols])
+                    ' analizo si la celda contiene comillas simples
+                    ' empiezo comparar la linea primera por nombres de columnas
+                    If Comp(dummyword, "TIPNOM", 1) = 0 Then
+                        TIPNOM = icols
+                    Endif
+                    If Comp(dummyword, "CODSUC", 1) = 0 Then
+                        CODSUC = icols
+                    Endif
+                    If Comp(dummyword, "CODGER", 1) = 0 Then
+                        CODGER = icols
+                    Endif
+                    If Comp(dummyword, "FICHA", gb.IgnoreCase) == 0 Then
+                        FICHA = icols
+                    Endif
+                    If Comp(dummyword, "NOMBRES", 1) = 0 Then
+                        NOMBRES = icols
+                    Endif
+                    If Comp(dummyword, "APELLIDOS", 1) = 0 Then
+                        APELLIDOS = icols
+                    Endif
+                    If Comp(dummyword, "ESTADO", 1) = 0 Then
+                        ESTADO = icols
+                    Endif
+                    If Comp(dummyword, "Cedula", 1) = 0 Then
+                        Cedula = icols
+                    Endif
+                    If Comp(dummyword, "Cedu", 1) == 0 Then
+                        Cedu = icols
+                    Endif
+                    If Comp(dummyword, "HEXFING64", 1) == 0 Then
+                        HEXFING = icols
+                    Else
+                        HEXFING = wdata.Max
+                    Endif
+                Next
+                dummycont = dummycont + 1
+            'Endif
+            ' leyendola primera columna, leemos el resto
+        hconn.Begin
+            
+            While Not Eof(hFile)
+                Line Input #hFile, wline
+                If InStr(wline, ",") > 1 Then
+                wdata = Split(wline, ",", "\\", False)
+                Else
+                wdata = Split(wline, ";", "\\", False)
+                Endif
+                'Print "procesando archivo linea " & dummycont & ": " & wdata[TIPNOM] & "," & wdata[CODSUC] & "," & wdata[CODGER] & "," & wdata[FICHA] & "," & wdata[Cedula] & "," & wdata[Cedu] & "," & wdata[Modalidad]
+                wtable = hconn.Create("ConsolidadoTemp")
+                wtable["TIPNOM"] = celdalimpia(wdata[TIPNOM]) ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas
+                wtable["CODSUC"] = celdalimpia(wdata[CODSUC]) ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo
+                wtable["CODGER"] = celdalimpia(wdata[CODGER]) ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar
+                wtable["FICHA"] = celdalimpia(wdata[FICHA]) ' FICHA VARCHAR(10)Null Default Null, - - identificador o licencia conducir, cedula sin letra de nacionalidad en caso Venezuela
+                wtable["NOMBRES"] = celdalimpia(wdata[NOMBRES]) ' NOMBRES VARCHAR(60)Null Default Null, - - nombre, ambos separados por un espacio
+                wtable["APELLIDOS"] = celdalimpia(wdata[APELLIDOS]) ' APELLIDOS VARCHAR(60)Null Default Null, - - apellido, ambos separados por un espacio
+                wtable["ESTADO"] = celdalimpia(wdata[ESTADO]) ' ESTADO VARCHAR(60)Null Default Null, - - activo, inactivo, suspendido, vacaciones, usado para verificacion y auditoria
+                'wtable["Cedula"] = celdalimpia(wdata[Cedula]) ' Cedula VARCHAR(12)Null Default Null, - - cedula con el simbolo de nacionalidad separado popr guion, solo Venezuela
+                wtable["Cedula"] = celdalimpia(wdata[Cedu]) ' Cedu VARCHAR(12)Null Default Null, - - numero unico del trabajador, en venezuela la cedula
+                'wtable["HEXFING64"] = wdata[HEXFING64] ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse
+                wtable.Update
+                dummycont = dummycont + 1
+            Wend
+            Print "Procesados " & dummycont & " registros, lista completa"
+            hFile.Close
+            
+        hconn.Commit
+        FMain.datos.setDbLocalLista(True) ' comunico a main que ya no tiene que invocarme mas nunca
+        Try Kill namFile
+    Endif
+    
+    sysasis_init_listado_huella
+    sysasis_init_enrolamiento_huella
+    sysasis_registro
+    
+    hconn.Close
+    dummyquer = "INSERT" 
+    dummyquer = " INTO sysasis_listado_huella(cod_ficha, fec_registro, cod_ubicacion, hex_huelladactilar)" 
+    dummyquer = " Select ficha, fec_actualizacion, codsuc, HEXFING From consolidadotemp "
+    
+    ' TODO pasar la data con los dedos a la tabla de listado
+    ' 
+    Return 0
 
 End
 
+'' celdalimpia remueve la comillas simples/dobles de una variable texto
+Private Sub celdalimpia(celda As String, Optional delimitador As String = "\"") As String
+    If Left$(celda) == "\'" And Right$(celda) == "\'" Then
+        celda = Mid$(celda, 2, -1)
+    Endif
+    ' analizo si la celda contiene comillas dobles
+    If Left$(celda) == delimitador And Right$(celda) == delimitador Then
+        celda = Mid$(celda, 2, -1)
+    Endif
+    Return celda
+End
+
+                    
 '' empleada para verificar el correcto seguimiento de inicio de la gestin de datos, con true, cada proceso extra no fallaria
+'' verificador de coneccion activa, getconnection establece True y crea una nueva si es necesario
 Public Sub isConected() As Integer
-
     Return hconniscon ' getconection establece esto a true si hay una coneccion activa
-
 End

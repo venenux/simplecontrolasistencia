@@ -22,10 +22,10 @@ Public Sub Form_Open()
 
 End
 
-
 '' este proceso inicia y/o prepara la apariencia en el modo normal (sin hacer nada)
 Public Sub iniciarInterfaz()
-    
+
+    Dim estatus As Integer
     Dim dbmanagdat As DBmandat
     ' inicializacion de variables y entorno de captura, asi como de muestra
     inputficha.Text = mensageinput      ' en el input, coloco que ingrese un id cedula o ficha
@@ -34,27 +34,35 @@ Public Sub iniciarInterfaz()
     videoarea.Hide                      ' no muestro video alguno, no se aun si hay camara web
     tiempotranscurrido_imagenes.Stop    ' detengo el vigilador de proceso de asistencia (verificacion/enrolado)
     horamostrar.Start                   ' interfaz preparada, arranca el horario de trabajo
-    
-         dbmanagdat = New DBmandat
-   dbmanagdat.getConeccionDB()
-    dbmanagdat.syncronizar()
+
+    dbmanagdat = New DBmandat
+    dbmanagdat.getConeccionDB()
+    If Me.datos.itsDbLocalLista() == False Then
+        estatus = dbmanagdat.syncronizar()  ' syncronizar crea todas las tablas necesarias, poblando todo, listado, enrolado y registros
+        If estatus == -1 Then
+            Quit                        ' si iniciando el listado no se encuentra ningun archivo, la aplicacion sale
+        Endif
+    Endif
     
     '' una app grafica es un hilo realmente, asi que en cada ciclo verifico el estado del modulo de captura
     Print " interfaz asistencia iniciada, vigilando modulo captura en estado " & Mcaptura.est_app_asis & ", usuario actual: " & datos.getUsuarioActual()
+
+End
+
+
+Public Sub algo()
     
-    If Mcaptura.est_app_asis == 9       ' si el modulo de captura esta en estado 1 invoco DB enrolado del id
-        dbmanagdat = New DBmandat
-        dbmanagdat.syncronizar()
-    Endif
-    If Mcaptura.est_app_asis == 1       ' si el modulo de captura esta en estado 1 invoco DB enrolado del id
-        dbmanagdat = New DBmandat
-        dbmanagdat.enrolar()
-    Endif
-    If Mcaptura.est_app_asis == 2       ' si el modulo de captura entr estado 2 invoco DB verificar el id contra el enrolado
-        dbmanagdat = New DBmandat
-        dbmanagdat.verificar()
-    Endif
-    
+  
+    ' If Mcaptura.est_app_asis == 9       ' si el modulo de captura esta en estado 9 puedo arrrancar con los datos
+    '     dbmanagdat.syncronizar()
+    ' Endif
+    ' If Mcaptura.est_app_asis == 1       ' si el modulo de captura esta en estado 1 invoco DB enrolado del id
+    '     dbmanagdat.enrolar()
+    ' Endif
+    ' If Mcaptura.est_app_asis == 2       ' si el modulo de captura entr estado 2 invoco DB verificar el id contra el enrolado
+    '     dbmanagdat.verificar()
+    ' Endif
+  
     
 End
 
@@ -63,7 +71,7 @@ End
 Public Sub iniciarEscaner()
 
     Mcaptura.funcionando_escaner()
-    videoarea.Show
+    panelidverificar.Show
 
 End
 
@@ -71,7 +79,7 @@ End
 Public Sub iniciarCamara()
 
     Mcaptura.funcionando_camara()
-    panelidverificar.Show
+    videoarea.Show
 
 End
 
@@ -153,7 +161,7 @@ Public Sub btnscanear_Click()
         btnscanear.Visible = False
         Mcaptura.scan_dedo_rostro(Me.datos.getUsuarioActual())
         Try Mcaptura.getCamera().Save(User.Home & "/." & datos.getUsuarioActual() & ".png")
-        
+
     Endif
 
 End
@@ -166,20 +174,18 @@ End
 
 Public Sub videoarea_Draw()
 
-  Dim hPict As Picture
-  
-  hPict = Mcaptura.getCamera().Image.Picture
-  'Try PictureBox1.Picture = hWebCam.Picture
-  Draw.Begin(videoarea)
-  Draw.Picture(hPict, (Me.videoarea.W - hPict.W) \ 2, (Me.videoarea.H - hPict.H) \ 2)
-  Draw.End
-  
-  pintarvideo.Enabled = True
-  
+    Dim hPict As Picture
+
+    hPict = Mcaptura.getCamera().Image.Picture
+    'Try PictureBox1.Picture = hWebCam.Picture
+    Draw.Begin(videoarea)
+    Draw.Picture(hPict, (Me.videoarea.W - hPict.W) \ 2, (Me.videoarea.H - hPict.H) \ 2)
+    Draw.End
+
+    pintarvideo.Enabled = True
 
 End
 
 Public Sub btnverificar_Click()
-
 
 End
