@@ -1,0 +1,68 @@
+' Gambas module file
+
+Public Sub prepararporconfiguracion() As DData
+    
+    Dim configuracion As Settings 
+    
+    Dim datos As New DData
+    
+    ' esto solo funciona en entorno de desarrollo, cuanedo se lanza desde la ide
+    If Not Exist(User.Home &/ ".asistenciatomar.conf") Then
+        Try Copy "asistenciatomar.conf" To User.Home &/ ".asistenciatomar.conf"
+    Endif
+    
+    ' en cualquier caso, esto solo es en desarrollo, en produccion, creara un archivo nuevo vacio
+    configuracion = New Settings(user.Home & "/.asistenciatomar.conf")
+    
+    If IsNull(configuracion["localidad/cod_ubicacion", Null]) Then
+        Message.Info("ubicacion no encontrada en el archivo de configuracion")
+        datos.setUbicacionUsuario("999")
+    Else 
+        datos.setUbicacionUsuario(configuracion["localidad/cod_ubicacion"])
+    Endif 
+    
+    If IsNull(configuracion["dispositivo/camara", Null]) Then
+        Message.Info("Dispositivo no definido en el archivo de configuracion")
+        datos.setCamaraDev("/dev/video0")
+    Else
+        datos.setCamaraDev(configuracion["dispositivo/camara"])
+    End If  
+    
+    If IsNull(configuracion["dispositivo/tamano", Null]) Then
+        Print "Tamano de camara no definido, usando por defecto minimo 320x240"
+        datos.setCamaraSize("320x240")
+    Else
+        datos.setCamaraSize(configuracion["dispositivo/tamano"])
+    End If  
+
+    If IsNull(configuracion["conexion/tipo", Null]) Then
+        Message.Info("No definida conexcion local en archivo configuracion")
+        datos.setContipoLo("sqlite3")
+    Else
+        datos.setContipoLo(configuracion["conexion/tipo"])
+    End If  
+
+    If IsNull(configuracion["origenes/op", Null]) Then
+        Message.Info("origen OP no definido, usando devel por defecto")
+        datos.setHostOP("37.10.254.20")
+    Else
+        datos.setHostOP(configuracion["origenes/op"])
+    End If  
+    
+    If IsNull(configuracion["origenes/tipo", Null]) Then
+        Message.Info("tipo DB origen OP no definido, usando archivo por defecto")
+        datos.setContipoOp("csv")
+    Else
+        datos.setContipoOp(configuracion["origenes/tipo"])
+    End If  
+    
+    If IsNull(configuracion["origenes/compresa", Null]) Then
+        Message.Info("no se ha definido si archivo esta encriptado")
+        datos.setListaCompresa("true")
+    Else
+        datos.setListaCompresa(configuracion["origenes/compresa"])
+    End If  
+    
+    Return datos
+    
+End
