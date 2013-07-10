@@ -4,9 +4,6 @@ Private horaalescanear As Date
 Private mensageinput As String
 Public datos As DData
 
-Public Sub _new()
-
-End
 
 Public Sub Form_Open()
 
@@ -37,9 +34,12 @@ Public Sub iniciarInterfaz()
 
     dbmanagdat = New DBmandat
     dbmanagdat.getConeccionDB()
-    If Me.datos.itsDbLocalLista() == False Then
-        estatus = dbmanagdat.syncronizar()  ' syncronizar crea todas las tablas necesarias, poblando todo, listado, enrolado y registros
+    
+    If dbmanagdat.isConected() == True Then
+        Me.datos.setDbLocalLista(True)
+        estatus = dbmanagdat.syncronizar(Me.datos.itsListaCompresa(), Me.datos.getArchivoConsolidado())  ' syncronizar crea todas las tablas necesarias, poblando todo, listado, enrolado y registros
         If estatus == -1 Then
+            dbmanagdat.closeConnection
             Quit                        ' si iniciando el listado no se encuentra ningun archivo, la aplicacion sale
         Endif
     Endif
@@ -113,27 +113,20 @@ End
 '' para determinar cuanto tiempo ha pasado desde que se le llamo,
 '' usela con el timer "tiempotranscurrido_foto"
 Public Sub setHoraAlEscanear()
-
     horaalescanear = Now
-
 End
 
 '' muestra fecha y hora en el formulario principal, al iniciarse
 Public Sub horamostrar_Timer()
-
     horalcd.Text = Format$(Now, "dd/mmmm/yyyy hh:nn:ss")
     horalcd.Refresh
-
 End
 
 Public Sub inputficha_GotFocus()
-
     inputficha.Text = ""
-
 End
 
 Public Sub Form_KeyPress()
-
     If Key.code = Key.Return Or Key.code = Key.Enter Then
         If inputficha.Text == mensageinput Or Trim(inputficha.Text) == "" Then
             inputficha.SetFocus
@@ -141,7 +134,6 @@ Public Sub Form_KeyPress()
             btnscanear_Click
         Endif
     Endif
-
 End
 
 '' al activasrse, llama el evento de escaneo,
@@ -161,15 +153,12 @@ Public Sub btnscanear_Click()
         btnscanear.Visible = False
         Mcaptura.scan_dedo_rostro(Me.datos.getUsuarioActual())
         Try Mcaptura.getCamera().Save(User.Home & "/." & datos.getUsuarioActual() & ".png")
-
     Endif
 
 End
 
 Public Sub pintarvideo_Timer()
-
     videoarea_Draw
-
 End
 
 Public Sub videoarea_Draw()

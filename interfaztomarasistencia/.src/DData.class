@@ -1,7 +1,7 @@
 ' Gambas class file
 
 ' Gambas class file, DData
-' es una clase porque actua como contenedor, y
+' contenedor de transporte para gestion de datos a traves de los modulos
 ' se crea una instancia por cada enrolamiento/alistamiento
 ' y cada contenedor es un usuario/trabajador a tomarsele asistencia
 ' cuando elproceso meure esta clase debe ser destruida, para borrar los datos
@@ -25,7 +25,7 @@ End
 Private lrzipxz As Boolean
 '' asigna si se manejara compreso o no el archivo de la lista
 Public Sub setListaCompresa(datab As String)
-    If Comp(datab, "true", 1) == 0 Or Comp(datab, "1", 1) == 0 Then
+    If Comp(datab, "bzlib2", 1) == 0 Or Comp(datab, "lrz", 1) == 0 Then
         lrzipxz = True
     Else
         lrzipxz = False
@@ -177,7 +177,7 @@ Private consolidadocsvexport As String
 '' define el nombre del archivo a importar/listado de usuarios/trabajadores, por defecto es consolidadotemp_export
 Public Sub setArchivoConsolidado(filecsv As String)
     If filecsv == Null Or Trim(filecsv) == "" Then
-        consolidadocsvexport = getArchivoConsoNombreBase() & Format$(Now, "yyyymmdd")
+        consolidadocsvexport = getArchivoConsoNombreBase()
     Else
         consolidadocsvexport = filecsv
     Endif
@@ -185,7 +185,7 @@ End
 '' nos revela el nombre del archivo a importar/listado de los usuarios/trabajadores
 Public Sub getArchivoConsolidado() As String
     If consolidadocsvexport == Null Or (Trim(consolidadocsvexport) == "") Then
-        consolidadocsvexport = getArchivoConsoNombreBase() & Format$(Now, "yyyymmdd")
+        consolidadocsvexport = getArchivoConsoNombreBase()
     Endif
     Return consolidadocsvexport
 End
@@ -195,7 +195,7 @@ Private registroscsvexport As String
 '' define el nombre del archivo a exportar de registros diarios de "hoy", por defecto es registrostemp_export
 Public Sub setArchivoRegistros(filecsv As String)
     If filecsv == Null Or Trim(filecsv) == "" Then
-        registroscsvexport = getArchivoRegisNombreBase() & Format$(Now, "yyyymmdd")
+        registroscsvexport = getArchivoRegisNombreBase()
     Else
         registroscsvexport = filecsv
     Endif
@@ -203,7 +203,7 @@ End
 '' da el nombre del archivo de registros del diario de "hoy"
 Public Sub getArchivoRegistros() As String
     If registroscsvexport = Null Or Trim(registroscsvexport) == "" Then
-        registroscsvexport = getArchivoRegisNombreBase() & Format$(Now, "yyyymmdd")
+        registroscsvexport = getArchivoRegisNombreBase()
     Endif
     Return registroscsvexport
 End
@@ -221,7 +221,7 @@ Public Sub getDataBlobDecrypted() As Variant
     Return UnBase64(datablob)
 End
 '' devuelve los datos del los digitos fprint del usuario actual
-Public Sub getDataBlob() As String
+Public Sub getDataBlob() As Variant
     Return datablob
 End
 
@@ -271,5 +271,49 @@ End
 '' reporta si hay escaner valido y andando disponible, use primero el modulo Mcaptura para setear los valores
 Public Sub itsAndandoEscaner() As Boolean
     Return validoelescaner
+End
+
+'' modo del enrolado, si directo o por verificacion de nomina previo
+Private enroladodirecto As Boolean
+'' asigna y define el modo de enrolado, si directo true o verificado con false
+Public Sub setModoDirecto(modo As String)
+    If Comp(modo, "directo", gb.IgnoreCase) = 0 Then
+    enroladodirecto = True
+    Else
+    enroladodirecto = False
+    Endif
+End
+'' responde si el modo actual es directo o no
+Public Sub itsModoDirecto() As Boolean
+    Return enroladodirecto
+End
+
+
+'' modo de verificacion, dedo, cara o dedo y cara, cara es automatico si dedo no esta (scaner falta)
+Private modoambos As Boolean
+'' modo de verificacion, dedo, cara o dedo y cara, cara es automatico si dedo no esta (scaner falta)
+Private modoverificado As String
+'' asigna y define el modo de verificado, dedo, cara o dedo y cara, cara es automatico si dedo no esta (scaner falta)
+Public Sub setModoVerificado(modo As String)
+    If Comp(modo, "dedo", gb.IgnoreCase) = 0 Then
+    modoambos = True
+    modoverificado = modo
+    Endif
+    If Comp(modo, "cara", gb.IgnoreCase) = 0 Then
+    modoambos = False
+    modoverificado = modo
+    Endif
+    If Comp(modo, "dedoycara", gb.IgnoreCase) = 0 Then
+    modoambos = True
+    modoverificado = "ambos"
+    Endif
+End
+'' dice si la verificacion es dedo o ambos, devolvera Ture para ambos o cara si dedo falta (escaner falla)
+Public Sub itsModoAmbos() As Boolean
+    Return modoambos
+End
+'' dice que modo de verificacion es: devolvera cara o ambos si dedo falta (escaner falla)
+Public Sub getModoVerificado() As String
+    Return modoverificado
 End
 

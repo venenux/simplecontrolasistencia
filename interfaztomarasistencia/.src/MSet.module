@@ -14,15 +14,15 @@ Public Sub prepararporconfiguracion() As DData
     ' en cualquier caso, esto solo es en desarrollo, en produccion, creara un archivo nuevo vacio
     configuracion = New Settings(user.Home & "/.asistenciatomar.conf")
     
-    If IsNull(configuracion["localidad/cod_ubicacion", Null]) Then
-        Message.Info("ubicacion no encontrada en el archivo de configuracion")
+    If IsNull(configuracion["localidad/ubicacion", Null]) Then
+        Message.Info("ubicacion no encontrada en el archivo de configuracion DEBE USAR UNA, comuniquese con sistemas")
         datos.setUbicacionUsuario("999")
     Else 
         datos.setUbicacionUsuario(configuracion["localidad/cod_ubicacion"])
     Endif 
     
     If IsNull(configuracion["dispositivo/camara", Null]) Then
-        Message.Info("Dispositivo no definido en el archivo de configuracion")
+        Message.Info("Dispositivo de video no definido en el archivo de configuracion")
         datos.setCamaraDev("/dev/video0")
     Else
         datos.setCamaraDev(configuracion["dispositivo/camara"])
@@ -36,33 +36,54 @@ Public Sub prepararporconfiguracion() As DData
     End If  
 
     If IsNull(configuracion["conexion/tipo", Null]) Then
-        Message.Info("No definida conexcion local en archivo configuracion")
+        Print "No definida conexcion local en archivo configuracion"
         datos.setContipoLo("sqlite3")
     Else
         datos.setContipoLo(configuracion["conexion/tipo"])
     End If  
 
     If IsNull(configuracion["origenes/op", Null]) Then
-        Message.Info("origen OP no definido, usando devel por defecto")
+        Print "Origen OP no definido, usando devel por defecto"
         datos.setHostOP("37.10.254.20")
     Else
         datos.setHostOP(configuracion["origenes/op"])
     End If  
     
     If IsNull(configuracion["origenes/tipo", Null]) Then
-        Message.Info("tipo DB origen OP no definido, usando archivo por defecto")
+        Print "No definido tipo de sincronismo, usando archivo csv"
         datos.setContipoOp("csv")
     Else
         datos.setContipoOp(configuracion["origenes/tipo"])
     End If  
     
     If IsNull(configuracion["origenes/compresa", Null]) Then
-        Message.Info("no se ha definido si archivo esta encriptado")
-        datos.setListaCompresa("true")
+        Print "Compresion/cryto no definido, usandose y asumiendose por defecto"
+        datos.setListaCompresa("bzlib2")
     Else
         datos.setListaCompresa(configuracion["origenes/compresa"])
     End If  
     
+    If IsNull(configuracion["modalidad/enrolado", Null]) Then
+       Print "Enrolado indirecto aprovacion por nomina usandose, no se definio en configuracon"
+        datos.setModoDirecto("activacion")
+    Else
+        datos.setModoDirecto(configuracion["modalidad/enrolado"])
+    End If  
+    
+    If IsNull(configuracion["modalidad/verificado", Null]) Then
+       Print "Verificado de dedoy cara usandose, no definido en configuracion"
+        datos.setModoVerificado("dedoycara")
+    Else
+        datos.setModoVerificado(configuracion["modalidad/verificado"])
+    End If  
+    
+    
+'     #enrolado can be "directo" Or "activacion"
+' enrolado = "directo"
+' #verificado can be "dedo", "cara or " dedoycara ""
+' verificado = "dedoycara"
+' #modo can be "demo", "auto" Or "connodo", the "connodo" need a post5gresql DB working ina valid ip
+' modo = "auto"
     Return datos
     
 End

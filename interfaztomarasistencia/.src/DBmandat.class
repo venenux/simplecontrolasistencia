@@ -18,6 +18,7 @@ Private pconn As Connection     ' objeto de la coneccion de base de datos remota
 Private hconnpath As String     ' ruta de la base de datos local
 Private hconndbnam As String    ' nombre de la base de datos local
 Private hconniscon As Boolean   ' estado de el modulo, TRUE si la conecion esta viva y puede usarse
+Private dbexistealdia As Boolean ' si la db existe no es necesario sincronizar
 
 
 '' modulo de apertura y conexcion a la db para guardar las imagenes escaneadas
@@ -37,8 +38,10 @@ Public Sub getConeccionDB() As Connection
 
     Try hconn.Open
     If Error Then
+        
 
         Print "Error al conectar: \"" & Error.Code & " " & Error.Text & "\"; actualizando a una al dia...."
+        dbexistealdia = False
 
         hconn.Close
         hconn.Name = ""          ' no decimos aun el nombre/archivo de la db, la creamos si no existe
@@ -63,10 +66,11 @@ Public Sub getConeccionDB() As Connection
         Endif
     Else
         hconniscon = True
+        dbexistealdia = True    ' si conecta a la primera, la DB existe y ya esta sincronizada
     Endif
     
     If hconniscon Then
-         Print "Conexion realizada, usando la DB " & hconn.Name & " existente/creada"
+         Print "Conexion realizada, usando la DB " & hconn.Name & " existente/creada, no es necesario sincronizar"
     Else
         Return hconniscon
     Endif
@@ -82,7 +86,10 @@ Public Function closeConnection()
     Endif
 End
 
-
+'' informa si la db ya existe, lo que significa que ya este sincronizada y con datos listos para usar, ya uqe getconnection y sincronizar la inician slo si es creada
+Public Function itsDBexiste() As Boolean
+    Return dbexistealdia
+End
 
 '' este, inicia estructura de datos para poder listar las huellas dactilares
 Public Function sysasis_init_listado_id()
@@ -124,6 +131,7 @@ Public Function sysasis_init_listado_id()
     Else
     Message.Error(" error " & Error.Code & " " & Error.Text)
     Endif
+    closeConnection
 
 End
 
@@ -164,6 +172,7 @@ Public Function sysasis_init_enrolar_id()
         hTable.PrimaryKey = ["cod_ficha", "cod_ubicacion", "fec_registro"]
         hTable.Update
     Endif
+    closeConnection
 
 End
 
@@ -228,6 +237,7 @@ Public Function sysasis_init_registro()
         hTable.PrimaryKey = ["cod_ficha", "cod_ubicacion", "fec_registro"]
         hTable.Update
     Endif
+    closeConnection
 
 End
 
@@ -238,7 +248,7 @@ End
 '' retrae el fichero compreso/encriptado, detecta nombres de campos e inserta los registros
 '' una vez realizado esto borra el fichero desencriptado, los archivos son movidos por fecha
 '' la fecha es el numero, no importando la de la maquina, la ultima fecha sera siempre el numero mayor
-Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp_export_") As Integer
+Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp_export_", sincronizar As Boolean = True) As Integer
 
     Dim namFile As String       ' nombre del archivo CVS que trae la lista actualizada
     Dim namComp As New Uncompress   ' archivo comprimido
@@ -249,6 +259,7 @@ Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp
     Dim hTable As Table         ' tabla de la nomina listado desde esas lineas de procesamiento
     Dim numDate As Integer      ' numero formado por YYYYMMDD este se ira reduciendo hasta encontrar un archivo
     Dim extFile As String       ' extension del archivo dependiendo si esta compreso
+    Dim sourcepath As String    ' ruta del archivo, por defecto home y /tmp si primera vez
     Dim sepa As String          ' separador de campos sea "," o ";"
 
     Dim tipnom As Integer, codsuc As Integer, codger As Integer, ficha As Integer
@@ -285,53 +296,85 @@ Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp
 
     ' inicializacion de la lista matutina, esta lista solo se debe actualizar si hay archivo nuevo.
     numDate = Val(Format$(Now, "yyyymmdd"))
-    namFile = User.Home &/ nf & extFile
+    sourcepath = User.Home
+    namFile = sourcepath &/ nf & numDate & extFile
     Print "Obteniendo fuentes de datos de listado diario.... como " & namFile
 
     ' verificacion de si hay actualizacion de la lista de empleados, sino no procedo a usar alguno antiguo
     If Not Exist(namFile) Then
         fileexits = False
         While fileexits == False
-          numDate = numDate - 1
-          namFile = User.Home &/ nf & numDate & extFile
-          If Exist(namFile) Then
-              Print "encontrado archivo viejo " & namFile
-              fileexits = True
-          Endif
-          If numDate = 20121231 Then
-              Message.Error("No se encontro datos de sincronizacion al dia, consulte a sistemas. \n" 
-              "\n\nNo se puede tomar asistencia, no hay un listado o el listado es muy viejo.\n\n"
-              "Debe existir un archivo similar a " & namFile & " como minimo.")
-              Return -1
-          Endif
+            numDate = numDate - 1
+            namFile = sourcepath &/ nf & numDate & extFile
+            If Exist(namFile) Then
+                Print "encontrado archivo viejo " & namFile
+                fileexits = True
+            Endif
+            If numDate = 20121231 Then
+                sourcepath = "/tmp"
+                namFile = sourcepath &/ nf & numDate & extFile
+                If itsDBexiste == False Then
+                    If Not Exist(namFile) Then
+                        Message.Error("No se encontro datos de sincronizacion al dia, consulte a sistemas. \n"
+                        "\n\nNo se puede tomar asistencia, no hay un listado o el listado es muy viejo.\n\n"
+                        "Debe existir un archivo similar a " & namFile & " como minimo.")
+                        Return -1
+                    Else
+                        fileexits = True
+                    Endif
+                Endif
+            Endif
         Wend
     Else
         fileexits = True ' si el archivo existe a la primera la lista esta al dia
     Endif
     
     ' por ahora el listado viene en formato bz2, la version privativa usara lrzip rpotegido con sha1
-    If FMain.datos.itsListaCompresa() Then
+    If arcm Then
         extFile = ".cvs"
         namComp.Type = "bzlib2"
-        Try namComp.File(namFile, User.Home &/ FMain.datos.getArchivoConsoNombreBase() & numDate & extFile)
+        Try namComp.File(namFile, sourcepath &/ nf & numDate & extFile)
         If Error Then
             Message.Error("No se pudo procesar los datos de sincronizacion al dia, consulte a sistemas. \n" 
               "\n\nNo se puede tomar asistencia, no hay un listado o el mismo esta dañado.\n\n"
               "Debe existir un archivo similar a " & namFile & " como minimo.")
               Return -1
         Endif
-        namFile = User.Home &/ FMain.datos.getArchivoConsoNombreBase() & numDate & extFile
+        namFile = sourcepath &/ nf & numDate & extFile
     Endif
-        
+    
     If fileexits Then
         'hay archivos nuevos, hay gente nueva, por ende se borra la tabla y se crea nueva
         hconn.Begin
-            Try hconn.Tables.Remove("ConsolidadoTemp")
-            If Error <> 0 Then
-            Message.Error("No se pudo actualizar los datos de sincronizacion al dia, consulte a sistemas. \n" 
-              "\n\nNo se puede tomar asistencia, no hay un listado o el mismo esta dañado.\n\n"
-              "Debe de ser completada la lista, se detecto una lista presente o DB corrupta.")
-              Return -1
+            If hconn.Tables.Exist("ConsolidadoTemp") Then
+                Print "verificando si la data ya existe en la db desde archivo ... "
+                hFile = Open namFile For Read
+                dummycont = 0
+                While Not Eof(hFile)
+                    Line Input #hFile, wline
+                    If RInStr(wline, "FICHA") > 0 Or RInStr(wline, "ficha", 0, 1) > 0 Then
+                        dummycont = 0       ' FICHA es uno de los posibles tutilos/cabecera, si viene no contarlo
+                    Else
+                        dummycont += 1      ' la misma cantidad de lineas de csv es la misma cantidad de registros
+                    Endif
+                Wend
+                hFile.Close
+                Try Kill namFile            ' ojo borramos rastro del la "desencriptado" y descomprimido
+                If itsDBexiste() Then
+                    dummyquer = "Select count( ficha ) as lineas From ConsolidadoTemp "
+                    wtable = hconn.Exec(dummyquer)
+                    If dummycont == wtable!lineas Then
+                        Print "Datos encontrados, registros en db igual a archivo, sin necesidad de sincronizacion. " & wtable!lineas & " contra " & dummycont
+                        Goto RellenarListado
+                    Endif
+                Endif
+                Try hconn.Tables.Remove("ConsolidadoTemp")
+                If Error Then
+                Message.Error("No se pudo actualizar los datos de sincronizacion al dia, consulte a sistemas. \n" 
+                  "\n\nNo se puede tomar asistencia, no hay un listado o el mismo esta dañado.\n\n"
+                  "Debe de ser completada la lista, error " & Error.Text & Error.Code)
+                  Return -1
+                Endif
             Endif
             If Not hconn.Tables.Exist("ConsolidadoTemp") Then
                 hTable = hconn.Tables.Add("ConsolidadoTemp")
@@ -359,6 +402,7 @@ Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp
               "No se pudo generar la lista nueva en la DB, la DB puede que este dañada.")
               Return -1
             Endif
+        Print "Procesando la data del archivo, encontrado que hay que actualizar... "
         ' procesamiento del archivo CSV, en un futuro este deberia solo enviar los cambiios
         hFile = Open namFile For Read
         ' primero leemos solo la primera linea, para determinar si hay nombres de columnas
@@ -439,6 +483,8 @@ Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp
         Try Kill namFile
     Endif
     
+    RellenarListado:
+    
     sysasis_init_listado_id     ' inicio la tabla de listado filtrado
     sysasis_init_enrolar_id     ' inicio la tabla de enrolado nuevo
     sysasis_init_registro       ' inicio la tabla de registros del dia
@@ -455,10 +501,10 @@ Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp
     hconn.Begin
     hconn.Exec(dummyquer)
     hconn.Commit
-    sys_enroll_user("19879841", True, Null, Null, Null)
+    sys_enroll_user("999999999", True, Null, Null, Null, "Nombre", "Apellido")
     ' TODO si modo directo activado, no borar datos de tabla de enrolado, sino insertarlos en el listado
     ' TODO OJO si desactivado modo directo listar y borrar dichos ingresados que aun esten en esta tabla
-    hconn.Close
+    closeConnection
     Print "Base de datos sincronizada y preparada, lista para usar."
     Return 0
 
@@ -480,7 +526,7 @@ End
 '' procedimiento de reclutamiento de nuevos esclav.. errr nuevos trabjadores a la lista
 '' requiere el id (ficha/cedula/identificador) del usuario o trabajador, 
 '' opcionalmente se le pasa la data del dedo, en ultimo caso las fotos de la cara y el dedo que no son importantes si la primera esta
-Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = False, data As Variant = Null, imag_cara As Picture = Null, imag_dedo As Picture = Null) As Integer
+Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = False, data As Variant = Null, imag_cara As Picture = Null, imag_dedo As Picture = Null, nameid As String, apelid As String) As Integer
     
     Dim wtable As Result        ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
     Dim dummyquer As String     ' query para ingresar el usuario en la lista de enrolado
@@ -495,7 +541,7 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
     Endif
 
     ' se esta registrando la huella de un nuevo usuario, verificamos no lo hayan enrolado antes
-    dummyquer = "SELECT count(cod_ficha) as existe FROM sysasis_enrolar_id WHERE cod_ficha LIKE '" & id & "%'"
+    dummyquer = "SELECT count(cod_ficha) as existe FROM sysasis_enrolar_id WHERE cod_ficha LIKE '" & id & "'"
     Try hres = hconn.Exec(dummyquer)
     If Error Then
         coderro = 2
@@ -528,9 +574,12 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
         Print " Error verificando ubicacion del id: " & Error.Text & " " & Error.Code & " usando uno por defecto 998 "
         Return coderro
     Endif
-    vartempo = hres.Count   ' en el delete no hacemos try, ya que en el select aseguramos cod_ficha existe dicho campo
+    ' vartempo = hres.count 'ojo: un select bien ejecutado no da eeror, y del select anterior ya vino codger
     If vartempo >= 1 Then
-        codubi = hres!CODGER
+        codubi = hres!CODGER ' por ende si la ficha existia, vartempo ya era 1 y traera codger
+        If Comp(Trim(codubi), "", 1) == 0 Then
+            codubi = "998"
+        Endif
     Endif
     
     ' TODO pasar la data con los dedos a la tabla de listado
@@ -553,14 +602,14 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
         coderro = 0
     Endif
     
-    Print "Verificando si enrolado directo... " & direct_enroll
+    Print "Verificando si enrolado directo esta activado... " & direct_enroll
     If direct_enroll == True Then
-        dummyquer = "SELECT cod_ficha FROM sysasis_listado_id WHERE cod_ficha LIKE '" & id & "'"
+        dummyquer = "SELECT count(cod_ficha) as existe FROM sysasis_listado_id WHERE cod_ficha LIKE '" & id & "'"
         Try wtable = hconn.Exec(dummyquer)
-        If Error Then
+        If Error <> 0 Then
             coderro = 2
         Else
-            vartempo = wtable.Count   ' en el delete no hacemos try, ya que en el select aseguramos cod_ficha existe dicho campo
+            vartempo = wtable!existe   ' en el delete no hacemos try, ya que en el select aseguramos cod_ficha existe dicho campo
             If vartempo >= 1 Then
                 Print "Enrolado directo activado, detectado que el usuario puede usar su id para verificacion dactilar/cara"
             Else
@@ -588,7 +637,7 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
     
     ' TODO si modo directo activo ya podria verificarse, pero sino entonces logear que necesita aprobacion
     Print "Usuario/trabajador enrolado, datos seran validos para verificacion apenas se aprueben en listado nuevo. " & coderro
-    hconn.Close
+    closeConnection
     Return coderro
     
 End
@@ -633,7 +682,7 @@ Public Sub sys_verify_user(id As String, Optional requested As String = "0") As 
     
     ' TODO si modo directo activo ya podria verificarse, pero sino entonces logear que necesita aprobacion
     Print "Usuario/trabajador encontrado.. para validar... " & coderro
-    hconn.Close
+    closeConnection
     Return data
     
 End
