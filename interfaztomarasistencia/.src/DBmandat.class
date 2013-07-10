@@ -23,6 +23,7 @@ Private hconniscon As Boolean   ' estado de el modulo, TRUE si la conecion esta 
 '' modulo de apertura y conexcion a la db para guardar las imagenes escaneadas
 Public Sub getConeccionDB() As Connection
 
+    hconn = Null
     'hconnpath = Application.Path & "/dbdata/asistenciatomar.sqlite"
     hconndbnam = ".scanerguidb" & Val(Format$(Now, "yyyymmdd")) & ".db"
     hconniscon = False
@@ -66,11 +67,21 @@ Public Sub getConeccionDB() As Connection
     
     If hconniscon Then
          Print "Conexion realizada, usando la DB " & hconn.Name & " existente/creada"
+    Else
+        Return hconniscon
     Endif
 
 Return hconn
 
 End
+
+'' cierra coneccion alguna si aun esta abierta
+Public Function closeConnection()
+    If isConected() == True Then
+        hconn.Close
+    Endif
+End
+
 
 
 '' este, inicia estructura de datos para poder listar las huellas dactilares
@@ -227,7 +238,7 @@ End
 '' retrae el fichero compreso/encriptado, detecta nombres de campos e inserta los registros
 '' una vez realizado esto borra el fichero desencriptado, los archivos son movidos por fecha
 '' la fecha es el numero, no importando la de la maquina, la ultima fecha sera siempre el numero mayor
-Public Sub syncronizar() As Integer
+Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp_export_") As Integer
 
     Dim namFile As String       ' nombre del archivo CVS que trae la lista actualizada
     Dim namComp As New Uncompress   ' archivo comprimido
@@ -266,7 +277,7 @@ Public Sub syncronizar() As Integer
         getConeccionDB()
     Endif
     
-    If FMain.datos.itsListaCompresa() Then
+    If arcm Then
         extFile = ".cryte"
     Else
         extFile = ".csv"
@@ -274,14 +285,15 @@ Public Sub syncronizar() As Integer
 
     ' inicializacion de la lista matutina, esta lista solo se debe actualizar si hay archivo nuevo.
     numDate = Val(Format$(Now, "yyyymmdd"))
-    namFile = User.Home &/ FMain.datos.getArchivoConsolidado() & extFile
+    namFile = User.Home &/ nf & extFile
+    Print "Obteniendo fuentes de datos de listado diario.... como " & namFile
 
     ' verificacion de si hay actualizacion de la lista de empleados, sino no procedo a usar alguno antiguo
     If Not Exist(namFile) Then
         fileexits = False
         While fileexits == False
           numDate = numDate - 1
-          namFile = User.Home &/ FMain.datos.getArchivoConsoNombreBase() & numDate & extFile
+          namFile = User.Home &/ nf & numDate & extFile
           If Exist(namFile) Then
               Print "encontrado archivo viejo " & namFile
               fileexits = True
@@ -301,7 +313,13 @@ Public Sub syncronizar() As Integer
     If FMain.datos.itsListaCompresa() Then
         extFile = ".cvs"
         namComp.Type = "bzlib2"
-        namComp.File(namFile, User.Home &/ FMain.datos.getArchivoConsoNombreBase() & numDate & extFile)
+        Try namComp.File(namFile, User.Home &/ FMain.datos.getArchivoConsoNombreBase() & numDate & extFile)
+        If Error Then
+            Message.Error("No se pudo procesar los datos de sincronizacion al dia, consulte a sistemas. \n" 
+              "\n\nNo se puede tomar asistencia, no hay un listado o el mismo esta dañado.\n\n"
+              "Debe existir un archivo similar a " & namFile & " como minimo.")
+              Return -1
+        Endif
         namFile = User.Home &/ FMain.datos.getArchivoConsoNombreBase() & numDate & extFile
     Endif
         
@@ -309,6 +327,12 @@ Public Sub syncronizar() As Integer
         'hay archivos nuevos, hay gente nueva, por ende se borra la tabla y se crea nueva
         hconn.Begin
             Try hconn.Tables.Remove("ConsolidadoTemp")
+            If Error <> 0 Then
+            Message.Error("No se pudo actualizar los datos de sincronizacion al dia, consulte a sistemas. \n" 
+              "\n\nNo se puede tomar asistencia, no hay un listado o el mismo esta dañado.\n\n"
+              "Debe de ser completada la lista, se detecto una lista presente o DB corrupta.")
+              Return -1
+            Endif
             If Not hconn.Tables.Exist("ConsolidadoTemp") Then
                 hTable = hconn.Tables.Add("ConsolidadoTemp")
                 With hTable.Fields
@@ -328,7 +352,13 @@ Public Sub syncronizar() As Integer
                 hTable.PrimaryKey = ["TIPNOM", "CODSUC", "CODGER", "FICHA", "Cedula"] ' cedula no es pk, debe ser cedu
                 hTable.Update
             Endif
-        hconn.Commit
+        Try hconn.Commit
+            If Error <> 0 Then
+            Message.Error("No se pudo actualizar los datos de sincronizacion al dia, consulte a sistemas. \n" 
+              "\n\nNo se puede tomar asistencia, no hay un listado o el mismo esta dañado.\n\n"
+              "No se pudo generar la lista nueva en la DB, la DB puede que este dañada.")
+              Return -1
+            Endif
         ' procesamiento del archivo CSV, en un futuro este deberia solo enviar los cambiios
         hFile = Open namFile For Read
         ' primero leemos solo la primera linea, para determinar si hay nombres de columnas
@@ -425,6 +455,7 @@ Public Sub syncronizar() As Integer
     hconn.Begin
     hconn.Exec(dummyquer)
     hconn.Commit
+    sys_enroll_user("19879841", True, Null, Null, Null)
     ' TODO si modo directo activado, no borar datos de tabla de enrolado, sino insertarlos en el listado
     ' TODO OJO si desactivado modo directo listar y borrar dichos ingresados que aun esten en esta tabla
     hconn.Close
@@ -449,7 +480,7 @@ End
 '' procedimiento de reclutamiento de nuevos esclav.. errr nuevos trabjadores a la lista
 '' requiere el id (ficha/cedula/identificador) del usuario o trabajador, 
 '' opcionalmente se le pasa la data del dedo, en ultimo caso las fotos de la cara y el dedo que no son importantes si la primera esta
-Public Sub sys_enroll_user(id As String, Optional data As Variant = Null, imag_cara As Picture = Null, imag_dedo As Picture = Null) As Integer
+Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = False, data As Variant = Null, imag_cara As Picture = Null, imag_dedo As Picture = Null) As Integer
     
     Dim wtable As Result        ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
     Dim dummyquer As String     ' query para ingresar el usuario en la lista de enrolado
@@ -522,6 +553,39 @@ Public Sub sys_enroll_user(id As String, Optional data As Variant = Null, imag_c
         coderro = 0
     Endif
     
+    Print "Verificando si enrolado directo... " & direct_enroll
+    If direct_enroll == True Then
+        dummyquer = "SELECT cod_ficha FROM sysasis_listado_id WHERE cod_ficha LIKE '" & id & "'"
+        Try wtable = hconn.Exec(dummyquer)
+        If Error Then
+            coderro = 2
+        Else
+            vartempo = wtable.Count   ' en el delete no hacemos try, ya que en el select aseguramos cod_ficha existe dicho campo
+            If vartempo >= 1 Then
+                Print "Enrolado directo activado, detectado que el usuario puede usar su id para verificacion dactilar/cara"
+            Else
+                hconn.Begin
+                wtable = hconn.Create("sysasis_listado_id")
+                wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
+                wtable!fec_registro = Date(Now) ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo"
+                wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
+                wtable!hex_huelladactilar = data ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+                wtable!hex_fotocara = imag_cara ' la foto por si no sirve el escanerdedo y hay que auditar la asistencia"
+                wtable!fec_actualizacion = Date(Now)
+                wtable!cod_usuasys = "systemas"
+                wtable.Update
+                Try hconn.Commit
+                If Error Then
+                    Print " Error registrando el id: " & Error.Text & " error " & Error.Code & ""
+                    Message.Warning(" Error registrando el id: " & Error.Text & " " & Error.Code & "\nPor favor vuelva a intentarlo, si persiste dicho error entonces\nconsulte con el departamento de nomina, a traves de la mensageria.")
+                    coderro = 1
+                Else
+                    coderro = 0
+                Endif
+            Endif
+        Endif
+    Endif
+    
     ' TODO si modo directo activo ya podria verificarse, pero sino entonces logear que necesita aprobacion
     Print "Usuario/trabajador enrolado, datos seran validos para verificacion apenas se aprueben en listado nuevo. " & coderro
     hconn.Close
@@ -578,6 +642,6 @@ End
                     
 '' empleada para verificar el correcto seguimiento de inicio de la gestin de datos, con true, cada proceso extra no fallaria
 '' verificador de coneccion activa, getconnection establece True y crea una nueva si es necesario
-Public Sub isConected() As Integer
+Public Sub isConected() As Boolean
     Return hconniscon ' getconection establece esto a true si hay una coneccion activa
 End
