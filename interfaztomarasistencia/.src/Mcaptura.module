@@ -37,26 +37,26 @@ Private LineaProcesamiento As String  ' esta contiene una linea a la vez de la s
 Private LineasProcesamiento As String[] ' bufer de la salida del proceso para ser analizada liena por linea
 
 Private scanerdedocmd As String     ' nombre del comando que escanea el dedo, segun el entorno
+Private scanerdummycmd As String    ' agregado al comando si se detecta que no hay escaner y esta emulandolo
 
 Private iscamerapresente As Boolean ' variable que indicara que hay una camara usable, si false revisar config o dispositivo dev
-Private isscanerpresente As Boolean ' variable que indicara que hay un escaner de dedos, si false, esta en modo emulado
+Private isscanerpresente As Boolean ' variable que indicara que hay un escaner de dedos, si false, posible este en modo emulado
+
+Private isemuladoactivo As Boolean  ' si no hay escaner presente, modo emulado poner en true
 
 Public mcaptura_emu As Boolean      ' semaforo, o indicador si al no haber dispositivo entra en modo emulado (igual que isscanerpresente)
 Public est_app_asis As Integer      ' semaforo, o interrupcion de salud del modulo, 0 listo, 1 se va invocar, 2 en pleno uso/verificando, 3 malo no hay backend
-Public dedo As Integer              ' dedo especificado empleado en el escaneo o verificacion de la huella dactilar
-
-
 
 '' procesos de preparacion y gestion la camara de video, la verificamos, configuramos y encendemos, en caso no haya backend
 Public Sub funcionando_camara()
 
     Dim tamanovideo As New String[]
 
-    If hWebCam Then
-        hWebCam = Null
-        FMain.Pintarvideo.Enabled = False
-        Return
-    Endif
+    ' If hWebCam Then
+    '     hWebCam = Null
+    '     FMain.Pintarvideo.Enabled = False
+    '     Return
+    ' Endif
 
     Try hWebCam = New VideoDevice(FMain.datos.getCamaraDev())
     If Error Then
@@ -85,6 +85,7 @@ Public Sub funcionando_camara()
     Wait 0.001 ' espero un poco a quela camara se inicialize, gambas tarda en maquinas pote
     FMain.pintarvideo.Delay = 10
     FMain.pintarvideo.Enabled = True ' enciendo un temporizador que pinta en cada pasada una foto y simula el video
+    FMain.datos.setStatusCamara(True)
     
     ' en este puto todo fue bien, marco estado bueno del modulo en 0
     est_app_asis = 0
@@ -95,14 +96,16 @@ End
 Public Sub funcionando_escaner()
 
     Dim resultado_backend As String ' usado para obtener una config desde el programa backend
-    Dim devlib As Integer ' variable de resultado de inicio de la libreria
-    Dim comd As String ' comando a invocar, variable no perecedera
+    Dim devlib As Integer           ' variable de resultado de inicio de la libreria
+    Dim comd As String              ' comando a invocar, variable no perecedera
+    Dim modoverificado As String    ' modo de verificado, por defecto ambos, si falla escaner solo cara
     
     devlib = fp_init() ' deteccion de si tenemos libfprint instalada, sino el programa a invocar fallara
     If (devlib < 0) Then
         Message.Error("Libreria de escaneo no instalada/detectada, instale libfprint para usar el backend con el escaner")
         est_app_asis = 3 ' sin liberia, el comando fallara
-        Return
+        FMain.datos.setStatusEscaner(False)
+        Return          ' aun cuando el comando este, y se pueda usar la camara, sin la lib el comando fallara, y es necesario
     Else
         fp_exit() ' libreria esta, si puede invoco el linea de comandos
     Endif
@@ -122,6 +125,7 @@ Public Sub funcionando_escaner()
             Else
                 Message.Error("El software de escaneo, no esta instalado, ¿se apago la maquina mal? ¿se instalo el software mal?")
                 est_app_asis = 4 ' hay libreria de gestion de scaners, pero no hay comando backend
+                FMain.datos.setModoVerificado("cara")
             Endif
         Endif
     Else
@@ -140,92 +144,244 @@ Public Sub funcionando_escaner()
         Message.Error("El software de escaneo, esta dañado, ¿se apago la maquina mal? ¿se instalo el software mal?")
         est_app_asis = 3
     Else
+        If Comp(LineasProcesamiento[1], "0063", 1) == 0 Then
+            setModoEmulado(True)
+        Else
+            setModoEmulado(False)
+        Endif
+        Print "Empleando escaner " & LineasProcesamiento[0] & " usando ruta " & LineasProcesamiento[3]
         FMain.datos.setRutaFprintData(User.Home & "/" & LineasProcesamiento[3])
-        FMain.datos.setDataBlob(Null)
+        FMain.datos.setStatusEscaner(True)
+        FMain.datos.setModoVerificado("ambos")
+        est_app_asis = 0
     Endif
 
 End
 
-'' proceso para escanear el dedo del esclavo
+'' proceso para escanear el dedo del esclav.. err trabajador, 
+'' toma un id (usuario) con dedo 1 (pulgar izq), y null data de dedos.
+'' se puede dejar sin especificar el dedo y datafinger, pero enonces
+'' asumira modo emulado, datafinger es la data que se pasa desde DB con 
+'' el dedo respectivo, dedo y datafingr deben ser de dedos asociados.
 
-Public Sub scan_dedo_rostro(usuario As String)
+Public Sub scan_dedo_rostro(usuario As String, Optional dedo As Integer = 1, Optional datafinger As Variant = Null)
 
-    Dim ramdi As Integer ' usado para esconder la imagen
+    Dim dbmanagdat As DBmandat
+    Dim ramdi As Integer                ' usado para esconder la imagen
 
-    Dim resultado_backend As String ' usado para obtener una config desde el programa backend
-    Dim fotocodificada As String ' usado para mostrar la imagen en la pantalla al enrollar
-    Dim ruta_d_huella As String ' la direccion del archivo foto imagen resultante
-    Dim ruta_d_foto As String ' la direccion del archivo huella imagen resultante
-    Dim foto As String ' el nombre de la foto, que sera el id usuario + aleatorio
-    Dim ruta As String ' ruta de trabajo de los datos, digitos y foto
-    Dim dummy As String = " dummy dummysts FALSE" ' deprecated, aora el comando se autodetecta el dispositivo
+    Dim resultado_backend As String     ' usado para obtener una config desde el programa backend
+    Dim resultado_dbmanat As Integer    ' usade para otener un estado de confirmacion de exito de la operacion en db
+    Dim datadedocodif As String         ' usado para manejar la dada binaria del dedo escaneado
+    Dim ruta_data_dactilar As String    ' la ruta de la data donde debe estar la huella dactilar
+    Dim ruta_img_huella As String       ' la direccion del archivo cara imagen resultante
+    Dim ruta_img_foto As String         ' la direccion del archivo huella imagen resultante
+    Dim name_img_huella As String       ' el nombre de la huella, que sera el id usuario + aleatorio
+    Dim name_img_foto As String         ' el nombre de la foto, que sera el id usuario
+    Dim ruta As String                  ' ruta de trabajo de los datos, digitos y foto
 
-    Dim hconn As Connection ' conexcion a DB sqlite, offline, fault toleran
-
-    dedo = 1
+    Dim hconn As Connection             ' conexcion a DB sqlite, offline, fault toleran
 
     Randomize CInteger(Val(Format$(Now, "ddmmyyyyhhnnss")))
     ramdi = Int(Rnd * 100000000)
-    foto = usuario & ramdi & ".pgm"   ' configuro el nombre de la foto segun el usuario y una var aleatoria
+    
+    ' configuramos las rutas y nombres de fotos de cara y dedo
+    name_img_foto = usuario & ".png"   ' configuro el nombre de la foto segun el usuario y una var aleatoria
+    name_img_huella = usuario & ramdi & ".pgm"   ' configuro el nombre de la foto segun el usuario y una var aleatoria
 
     ' mandamos a pedir la ruta al backend, y la guardamos en una variable, alli trabajaremos
     Shell scanerdedocmd & " path interfaz 2>&1" To ruta ' nuestro backend esta hecho para que devuelva solo una linea
 
     ' armo la ruta y el ubicacion de la foto, pa mostrasela, auqnue leonardo se queje, y sea grotesco
-    ruta_d_huella = User.Home & "/" & ruta & foto
+    ruta_img_huella = User.Home & "/" & ruta & name_img_huella
+    ruta_img_foto = User.Home & "/" & ruta & name_img_foto
+    ruta_data_dactilar = User.Home & "/" & ruta & dedo
+    Print " ruta img: " & ruta_img_foto & " ded img " & ruta_img_huella & " dactilar " & ruta_data_dactilar
 
+    ' eliminamos cualquier archivo previo
+    If Exist(ruta_img_foto) Then Kill ruta_img_foto
+    If Exist(ruta_img_huella) Then Kill ruta_img_huella
+    
     FMain.mensageusuario.Text = "Registrado " & usuario
     FMain.inputficha.Hide
-    ' eliminamos cualquier archivo previo
-    If Exist(ruta_d_huella) Then Kill ruta_d_huella
-    ' pedimos a nuestra aplicacion que tome una foto del dedo
     FMain.mensageusuario.Show
 
-    'hProcesamiento = Exec [comd, "frontend" "enroll", "image", ruta_d_huella] For Read As "Procesamiento"
-    'Shell comd & " interfaz enroll image " & ruta_d_huella & " 2>&1" To resultado_backend
-    Print scanerdedocmd & " interfaz enroll finger " & dedo & " image " & ruta_d_huella & dummy & " 2>&1"
-    Shell scanerdedocmd & " interfaz enroll finger " & dedo & " image " & ruta_d_huella & dummy & " 2>&1" To resultado_backend
+    Print scanerdedocmd & " interfaz enroll finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1"
+    Shell scanerdedocmd & " interfaz enroll finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1" To resultado_backend
+    Print resultado_backend
     LineasProcesamiento = Split(resultado_backend, "\n")
     ' 0 = nombreimagen=<ruta>/noencontrado.pgm
     ' 1 = rutafiledata =<HOME>/.fprint/prints/<rutadevice>/<dedo> obviado en modo dummy
     ' 2 = nombre = noencontrado.pgm
     ' 3 = status = TRUE, FALSE si esta en modo dummy
     ' 4 = salida = 0
-    FMain.datos.setRutaFprintData(User.Home & "/" & ruta)
-    'FMain.datos.setDataBlob(File.Load(LineasProcesamiento[1]))
-    FMain.datos.setStatusEnrolado(LineasProcesamiento[3])
 
     ' tomamos el tiempo para solo mostrar la fotico unos segundos
     FMain.setHoraAlEscanear
-    FMain.tiempotranscurrido_imagenes.Start
-    ' rescatamos la foto de donde se guardo, y codificamos encriptada legible por cualquer programa
-    fotocodificada = Base64(File.Load(ruta_d_huella))
-    FMain.datos.setImagenEncriptada64(fotocodificada)
-    ' cargamos la fotico del dedo en el GUI interfaz grafica al usuario
-    FMain.img_mostrar_scan.Picture = Picture[ruta_d_huella]
+    FMain.tiempotranscurrido_imagenes.Start     ' iniciamos el contador, solo mostrara imagenes por 5 segundos
+    ' cargamos los datos del usuario enrolado
+    If itsModoEmulado() == False Then
+        ' rescatamos y vemos la ruta de donde esta la data del dedo, la ruta ya  yo la habia preguntado
+        ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
+        FMain.datos.setDataBlob(File.Load(ruta_data_dactilar))
+        ' rescatamos y endosamos la data de la ruta que rescatamos
+        datadedocodif = Base64(File.Load(ruta_data_dactilar))
+        FMain.datos.setDataBlobCrypted(datadedocodif)
+        ' cargamos la fotico del dedo en el GUI interfaz grafica al usuario
+        FMain.img_dedo_mostrar.Picture = Picture[ruta_img_huella]
+    Endif
+    ' informamos de si fue enrolado/verificado correctamente por el backend
+    FMain.datos.setStatusEnrolado(LineasProcesamiento[3])
     ' operacion exitosa, mostramos la foto pero no permitimos pulsar boton hasta que vea su huella
-    FMain.img_mostrar_scan.Show
+    FMain.img_dedo_mostrar.Show
+    ' tiramos una fotico de la cara que pone el esclavo.. err digo trabajador
+    getCamera().Save(ruta_img_foto)
+    ' cargamos la fotico del rostro en el GUI interfaz grafica al usuario
+    FMain.img_cara_mostrar.Picture = Picture[ruta_img_foto]
+    FMain.img_cara_mostrar.Show
+    FMain.img_video_mostrar.Visible = False
+    ' gestionamos hacia base de datos
+    dbmanagdat = New DBmandat
+    dbmanagdat.getConeccionDB()
+    resultado_dbmanat = dbmanagdat.sys_enroll_user(usuario, FMain.datos.itsModoDirecto(), FMain.datos.getDataBlob(), Null, Null, "COLOCAR_NOMBRE", "COLOCAR_APELLIDO")
+    Print "proceso de enrolado termino con resultqado : " & resultado_dbmanat
     ' eliminamos rastro, dado ya tenemos la foto dactilar y el archivo, incluso encriptado
-    'Copy ruta_d_huella To User.Home &/ ".escaneadoactual.pgm"
+    Kill ruta_img_huella
+    Kill ruta_img_foto
+    FMain.datos.setDataBlobCrypted(Null)
     Return
 
 End
 
-Public Sub setScanerdedoCmd(command As String)
 
-    scanerdedocmd = "/usr/bin/" & command
+'' proceso para verificar el dedo del esclav.. err trabajador, 
+'' toma un id (usuario) con dedo 1 (pulgar izq), y null data de dedos.
+'' se puede dejar sin especificar el dedo y datafinger, pero enonces
+'' asumira modo emulado, datafinger es la data que se pasa desde DB con 
+'' el dedo respectivo, dedo y datafingr deben ser de dedos asociados.
+
+Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
+
+    Dim dbmanagdat As DBmandat
+    Dim ramdi As Integer                ' usado para esconder la imagen
+
+    Dim resultado_backend As String     ' usado para obtener una config desde el programa backend
+    Dim resultado_dbmanat As Integer    ' usade para otener un estado de confirmacion de exito de la operacion en db
+    Dim datadedocodif As String         ' usado para manejar la dada binaria del dedo escaneado
+    Dim ruta_data_dactilar As String    ' la ruta de la data donde debe estar la huella dactilar
+    Dim ruta_img_huella As String       ' la direccion del archivo cara imagen resultante
+    Dim ruta_img_foto As String         ' la direccion del archivo huella imagen resultante
+    Dim name_img_huella As String       ' el nombre de la huella, que sera el id usuario + aleatorio
+    Dim name_img_foto As String         ' el nombre de la foto, que sera el id usuario
+    Dim ruta As String                  ' ruta de trabajo de los datos, digitos y foto
+
+    Dim hconn As Connection             ' conexcion a DB sqlite, offline, fault toleran
+    
+    Dim verificado As String
+
+    Randomize CInteger(Val(Format$(Now, "ddmmyyyyhhnnss")))
+    ramdi = Int(Rnd * 100000000)
+    
+    ' configuramos las rutas y nombres de fotos de cara y dedo
+    name_img_foto = usuario & ".png"   ' configuro el nombre de la foto segun el usuario y una var aleatoria
+    name_img_huella = usuario & ramdi & ".pgm"   ' configuro el nombre de la foto segun el usuario y una var aleatoria
+
+    ' mandamos a pedir la ruta al backend, y la guardamos en una variable, alli trabajaremos
+    Shell scanerdedocmd & " path interfaz 2>&1" To ruta ' nuestro backend esta hecho para que devuelva solo una linea
+
+    ' armo la ruta y el ubicacion de la foto, pa mostrasela, auqnue leonardo se queje, y sea grotesco
+    ruta_img_huella = User.Home & "/" & ruta & name_img_huella
+    ruta_img_foto = User.Home & "/" & ruta & name_img_foto
+    ruta_data_dactilar = User.Home & "/" & ruta & dedo
+    Print " ruta img: " & ruta_img_foto & " ded img " & ruta_img_huella & " dactilar " & ruta_data_dactilar
+
+    ' eliminamos cualquier archivo previo
+    If Exist(ruta_img_foto) Then Kill ruta_img_foto
+    If Exist(ruta_img_huella) Then Kill ruta_img_huella
+    If Exist(ruta_data_dactilar) Then Kill ruta_data_dactilar
+    
+    dbmanagdat = New DBmandat
+    hconn = dbmanagdat.getConeccionDB()
+    FMain.datos.setDataBlobCrypted(dbmanagdat.sys_verify_user(usuario, "1"))
+    Print " salvando " & ruta_data_dactilar
+    File.Save(ruta_data_dactilar, UnBase64(dbmanagdat.sys_verify_user(usuario, "1")))
+    FMain.mensageusuario.Text = "Verificando " & usuario
+    FMain.inputficha.Hide
+    FMain.mensageusuario.Show
+
+    Print scanerdedocmd & " interfaz verify finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1"
+    Shell scanerdedocmd & " interfaz verify finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1" To resultado_backend
+    Print resultado_backend
+    LineasProcesamiento = Split(resultado_backend, "\n")
+    ' 0 = nombreimagen=<ruta>/noencontrado.pgm
+    ' 1 = rutafiledata =<HOME>/.fprint/prints/<rutadevice>/<dedo> obviado en modo dummy
+    ' 2 = nombre = noencontrado.pgm
+    ' 3 = status = TRUE, FALSE si esta en modo dummy
+    ' 4 = salida = 0
+
+    ' tomamos el tiempo para solo mostrar la fotico unos segundos
+    FMain.setHoraAlEscanear
+    FMain.tiempotranscurrido_imagenes.Start     ' iniciamos el contador, solo mostrara imagenes por 5 segundos
+    ' cargamos los datos del usuario enrolado
+    If itsModoEmulado() == False Then
+        ' rescatamos y vemos la ruta de donde esta la data del dedo
+        ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
+        ' verificamos "true" de dactilar
+        verificado = LineasProcesamiento[3]
+        ' cargamos la fotico del dedo en el GUI interfaz grafica al usuario
+        FMain.img_dedo_mostrar.Picture = Picture[ruta_img_huella]
+    Endif
+    ' informamos de si fue enrolado/verificado correctamente por el backend
+    FMain.datos.setStatusVerificado(LineasProcesamiento[3])
+    ' operacion exitosa, mostramos la foto pero no permitimos pulsar boton hasta que vea su huella
+    FMain.img_dedo_mostrar.Show
+    ' tiramos una fotico de la cara que pone el esclavo.. err digo trabajador
+    getCamera().Save(ruta_img_foto)
+    ' cargamos la fotico del rostro en el GUI interfaz grafica al usuario
+    FMain.img_cara_mostrar.Picture = Picture[ruta_img_foto]
+    FMain.img_cara_mostrar.Show
+    FMain.img_video_mostrar.Visible = False
+    ' gestionamos hacia base de datos
+    dbmanagdat = New DBmandat
+    dbmanagdat.getConeccionDB()
+    'resultado_dbmanat = dbmanagdat.sys_enroll_user(usuario, FMain.datos.itsModoDirecto(), FMain.datos.getDataBlob(), Null, Null, "COLOCAR_NOMBRE", "COLOCAR_APELLIDO")
+    Print "proceso de enrolado termino con resultqado : " & verificado
+    ' eliminamos rastro, dado ya tenemos la foto dactilar y el archivo, incluso encriptado
+    Try Kill ruta_img_huella
+    Try Kill ruta_img_foto
+    Return
 
 End
 
+
+'' configura el comando a ejecutar para escanear directorios validos son /usr/bin y /usr/local/bin, sino lo asume
+Public Sub setScanerdedoCmd(command As String)
+    If RInStr(command, "/usr/bin") = 1 Or RInStr(command, "/usr/local/bin") > 0 Then
+        scanerdedocmd = command
+    Else
+        scanerdedocmd = "/usr/bin/" & command
+    Endif
+End
+
+'' obtiene el comando a ejecutar para escanear
 Public Sub getScanerdedoCmd() As String
-
     Return Mcaptura.scanerdedocmd
-
 End
 
 '' otorga acceso a la camara web una vez configurada por "funcionando_camara"
 Public Sub getCamera() As VideoDevice
-
     Return Mcaptura.hWebcam
+End
 
+'' configurar si se empleara emulacion del escaner
+Public Sub setModoEmulado(modo As Boolean)
+    isemuladoactivo = modo
+    If modo == True
+    scanerdummycmd = " dummy dummysts FALSE" ' deprecated, aora el comando se autodetecta el dispositivo
+    Else
+    scanerdummycmd = ""
+    Endif
+End
+'' notifica y verifica si se tiene escaner o esta en modo emulado
+Public Sub itsModoEmulado() As Boolean
+    Return isemuladoactivo
 End

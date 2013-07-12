@@ -7,15 +7,24 @@ Public datos As DData
 
 Public Sub Form_Open()
 
+    Dim clave As String
+    Dim tiempodiario As Long
+    Dim numeroubica As Long
     Me.center           ' centramos el aplicativo
     mensageinput = "Ingrese id"
     Me.datos = New DData
     Me.datos = Mset.prepararporconfiguracion()  ' leer la configuracion, que camara, que modo, que db, etc
+    tiempodiario = Val(Format$(Now, "mmddhh"))
+    numeroubica = Val(Me.datos.getUbicacionUsuario())
+    Print "Sistema de Asistencia: Interfaz arrancada con tiempo dinamico en: " & tiempodiario & " " & numeroubica
+    clave = numeroubica * tiempodiario
+    Me.datos.setClaveAdminEnrolado(clave)    ' confogura la clave de administracion y enrolado
     Me.datos.setUsuarioActual("ninguno")
     Mcaptura.est_app_asis = 0   ' cada funcion abajo coloca est_app_asis en 0 si exitoso, sino 3,4,5 en fallo
-    iniciarInterfaz     ' inicia y coloca oden en el grafico que ve el usuario, esconde mensages y pide id
+    iniciarInterfaz     ' inicia y coloca orden en el grafico que ve el usuario, esconde mensages y pide id
     iniciarEscaner      ' inicia y verifica el backend, el escaner y ve si hay uno, sino emula uno, par pedir camara
     iniciarCamara       ' inicia y preprara la camara de video para empezar tomar fotos de los usuarios/trabajadores
+    Print "clave: " & Me.datos.getClaveAdminEnrolado()
 
 End
 
@@ -24,11 +33,13 @@ Public Sub iniciarInterfaz()
 
     Dim estatus As Integer
     Dim dbmanagdat As DBmandat
+    img_video_mostrar.Visible = True
     ' inicializacion de variables y entorno de captura, asi como de muestra
     inputficha.Text = mensageinput      ' en el input, coloco que ingrese un id cedula o ficha
     mensageusuario.Hide                 ' no muestro ninguna notificacion al usuario, la app esta en espera de uno
-    img_mostrar_scan.Hide               ' escondo el area de imagen de dedo ya que la app esta en espera de uno
-    videoarea.Hide                      ' no muestro video alguno, no se aun si hay camara web
+    img_dedo_mostrar.Hide               ' escondo el area de imagen de dedo ya que la app esta en espera de uno
+    img_cara_mostrar.Hide               ' escondo el area de foto del usuario ya que no hay usuario aun
+    img_video_mostrar.Hide              ' no muestro video alguno, no se aun si hay camara web
     tiempotranscurrido_imagenes.Stop    ' detengo el vigilador de proceso de asistencia (verificacion/enrolado)
     horamostrar.Start                   ' interfaz preparada, arranca el horario de trabajo
 
@@ -45,14 +56,13 @@ Public Sub iniciarInterfaz()
     Endif
     
     '' una app grafica es un hilo realmente, asi que en cada ciclo verifico el estado del modulo de captura
-    Print " interfaz asistencia iniciada, vigilando modulo captura en estado " & Mcaptura.est_app_asis & ", usuario actual: " & datos.getUsuarioActual()
+    Print "La interfaz asistencia iniciada, vigilando modulo captura en estado " & Mcaptura.est_app_asis & ", usuario actual: " & datos.getUsuarioActual()
 
 End
 
 
 Public Sub algo()
     
-  
     ' If Mcaptura.est_app_asis == 9       ' si el modulo de captura esta en estado 9 puedo arrrancar con los datos
     '     dbmanagdat.syncronizar()
     ' Endif
@@ -62,51 +72,50 @@ Public Sub algo()
     ' If Mcaptura.est_app_asis == 2       ' si el modulo de captura entr estado 2 invoco DB verificar el id contra el enrolado
     '     dbmanagdat.verificar()
     ' Endif
-  
     
 End
 
 
 '' proceso que prepara el dispositivo de escanedo dactilar, establece un semaforo para saber cuando esta disponible
 Public Sub iniciarEscaner()
-
     Mcaptura.funcionando_escaner()
     panelidverificar.Show
-
 End
 
 '' proceso que enciende la camara, segun la config y las propiedades establecidas
 Public Sub iniciarCamara()
-
     Mcaptura.funcionando_camara()
-    videoarea.Show
-
+    img_video_mostrar.Show
 End
 
 '' Esta funcion es importante, se dispara en "Mcaptura.scan_dedo_imagen()"
 Public Sub tiempotranscurrido_imagenes_Timer()
-
-    Print " vigilando "
+    Print "Proceso de escaneo iniciado, vigilando... "
     ' en lo que arranca nuestro temporizador, excondemos el boton
     btnscanear.Visible = False
     btnscanear.Hide
     inputficha.Hide
-    'Mcaptura.est_app_asis = 0
-    ' mandamos (en el ciclo del timer) esperar 4 segundos, y despues volvemos dejar tirar foto y huella
-    If DateDiff(horaalescanear, Now, gb.Second) > 3 Then
-        img_mostrar_scan.Hide  ' por supuesto, si ya se mostro huella, y se vuelve capturar, escondemos la anterior
+    If DateDiff(horaalescanear, Now, gb.Second) > 5 Then
         btnscanear.Visible = True
         btnscanear.Show
         inputficha.Show
         mensageusuario.Hide
         horamostrar.Start
-        img_mostrar_scan.Hide
-        Mcaptura.est_app_asis = 2
+        img_cara_mostrar.Refresh    ' redibujado es diferido y se llama en el proximo evento, perfecto para este problema
+        img_dedo_mostrar.Refresh    ' redibujado es diferido y se llama en el proximo evento, perfecto para este problema
+        img_dedo_mostrar.Hide
+        img_cara_mostrar.Hide
+        img_video_mostrar.Show
+        img_video_mostrar.Visible = True
         tiempotranscurrido_imagenes.Stop
-        FMain.iniciarEscaner
+        Print "Proceso de escaneo/verificacion finalizado."
+        ' FMain.iniciarEscaner
+        ' FMain.iniciarCamara
+        img_cara_mostrar.Picture.Flush
+        img_cara_mostrar.Picture.Clear
+        inputficha.Text = ""
     Endif
-    Print " estado " & Mcaptura.est_app_asis
-
+    Print "... estado " & Mcaptura.est_app_asis
 End
 
 '' al llamarse, marca un tiempo, se usa
@@ -140,7 +149,6 @@ End
 '' tomando desde la instancia de datos, el usuario,
 '' y deteniendo la hora para que se muestre cuando se escaneo
 Public Sub btnscanear_Click()
-
     inputficha.SetFocus
     If inputficha.Text == mensageinput Or Trim(inputficha.Text) == "" Then
         Message.Info(mensageinput)
@@ -152,23 +160,21 @@ Public Sub btnscanear_Click()
         btnscanear.Hide
         btnscanear.Visible = False
         Mcaptura.scan_dedo_rostro(Me.datos.getUsuarioActual())
-        Try Mcaptura.getCamera().Save(User.Home & "/." & datos.getUsuarioActual() & ".png")
     Endif
-
 End
 
 Public Sub pintarvideo_Timer()
-    videoarea_Draw
+    img_video_mostrar_Draw
 End
 
-Public Sub videoarea_Draw()
+Public Sub img_video_mostrar_Draw()
 
     Dim hPict As Picture
 
     hPict = Mcaptura.getCamera().Image.Picture
     'Try PictureBox1.Picture = hWebCam.Picture
-    Draw.Begin(videoarea)
-    Draw.Picture(hPict, (Me.videoarea.W - hPict.W) \ 2, (Me.videoarea.H - hPict.H) \ 2)
+    Draw.Begin(img_video_mostrar)
+    Draw.Picture(hPict, (Me.img_video_mostrar.W - hPict.W) \ 2, (Me.img_video_mostrar.H - hPict.H) \ 2)
     Draw.End
 
     pintarvideo.Enabled = True
@@ -176,5 +182,16 @@ Public Sub videoarea_Draw()
 End
 
 Public Sub btnverificar_Click()
-
+    inputficha.SetFocus
+    If inputficha.Text == mensageinput Or Trim(inputficha.Text) == "" Then
+        Message.Info(mensageinput)
+        Return
+    Else
+        Me.datos.setUsuarioActual(inputficha.Text)
+        horamostrar.Stop
+        Mcaptura.est_app_asis = 1
+        btnscanear.Hide
+        btnscanear.Visible = False
+        Mcaptura.verif_dedo_rostro(Me.datos.getUsuarioActual(), 1)
+    Endif
 End

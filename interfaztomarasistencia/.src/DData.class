@@ -41,7 +41,7 @@ End
 '' imagen del usuario en proceso
 Private imagenencriptada64 As String
 
-Public Sub setImagenEncriptada64(img As String)
+Public Sub setDataDedoEncriptada64(img As String)
     imagenencriptada64 = img
 End
 
@@ -215,14 +215,23 @@ Private datablobcypt As Variant
 '' asigna al proceso actual del usuario un binario fprint para asociarlo y trabajarlo
 Public Sub setDataBlob(datab As Variant)
     datablob = datab
+'    datablobcypt = Base64(datab)
 End
 '' no implementado aun
-Public Sub getDataBlobDecrypted() As Variant
-    Return UnBase64(datablob)
+Public Sub getDataBlobDecrypted() As String
+    Return UnBase64(datablobcypt)
 End
 '' devuelve los datos del los digitos fprint del usuario actual
 Public Sub getDataBlob() As Variant
     Return datablob
+End
+'' guarda en ram codificacion de binario ya base 64, se necesita ya convertido en base64
+Public Sub setDataBlobCrypted(data As String)
+    datablob = data
+End
+'' devuelve los datos cryptados del los digitos fprint del usuario actual
+Public Sub getDataBlobCrypted() As Variant
+    Return datablobcypt
 End
 
 '' estado del enrollado en el proceso actual
@@ -316,4 +325,17 @@ End
 Public Sub getModoVerificado() As String
     Return modoverificado
 End
+
+
+'' clave dinamica de enrolado
+Private adminenrolclave As String
+'' asignar la clave de administracion de enrolado
+Public Sub setClaveAdminEnrolado(clave As String)
+    adminenrolclave = clave
+End
+'' obtiene al clave dinamica diaria de enrolado y administracion
+Public Sub getClaveAdminEnrolado() As String
+    Return adminenrolclave
+End
+
 

@@ -18,7 +18,7 @@ Public Sub prepararporconfiguracion() As DData
         Message.Info("ubicacion no encontrada en el archivo de configuracion DEBE USAR UNA, comuniquese con sistemas")
         datos.setUbicacionUsuario("999")
     Else 
-        datos.setUbicacionUsuario(configuracion["localidad/cod_ubicacion"])
+        datos.setUbicacionUsuario(configuracion["localidad/ubicacion"])
     Endif 
     
     If IsNull(configuracion["dispositivo/camara", Null]) Then
