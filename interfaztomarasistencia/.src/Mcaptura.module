@@ -275,6 +275,7 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
     Dim ruta As String                  ' ruta de trabajo de los datos, digitos y foto
 
     Dim hconn As Connection             ' conexcion a DB sqlite, offline, fault toleran
+    Dim datos As String[]
     
     Dim verificado As String
 
@@ -301,11 +302,14 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
     
     dbmanagdat = New DBmandat
     hconn = dbmanagdat.getConeccionDB()
+    ' TODO la funcion dbmanagdat.sys_verify_user(usuario, "1") rescata lso datos, en binaryo blob de base64, necesito saber como guardarlos
     FMain.datos.setDataBlobCrypted(dbmanagdat.sys_verify_user(usuario, "1"))
     Print " salvando " & ruta_data_dactilar
-    File.Save(ruta_data_dactilar, UnBase64(dbmanagdat.sys_verify_user(usuario, "1")))
+    'Open UnBase64(dbmanagdat.sys_verify_user(usuario, "1"))
     FMain.mensageusuario.Text = "Verificando " & usuario
     FMain.inputficha.Hide
+    datos = dbmanagdat.sys_search_user(usuario, Null)
+    FMain.mensageusuario.Text = usuario & ": " & datos[0] & "," & datos[1]
     FMain.mensageusuario.Show
 
     Print scanerdedocmd & " interfaz verify finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1"

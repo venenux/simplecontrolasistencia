@@ -536,6 +536,7 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
     Dim codubi As String        ' codigo de la ubicacion, deberia tomarse de la aplicacion pero bueh
     Dim vartempo As Integer     ' usada para saber en cada query si vino resultado alguno
     Dim coderro As Integer = 1  ' codigo error de la operacion, cero si nada falla, y 1 hay errores
+    Dim datos As New String[2]   ' data del usuario para mostrar informativo en pantalla, asi no mete la pata el esclav.. err trabajador
     
     Dim fixcedula As String
     Dim numdigits As Integer
@@ -616,6 +617,12 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
         coderro = 1
     Else
         coderro = 0
+            dummyquer = "SELECT APELLIDOS as ape, nombres as nom from ConsolidadoTemp WHERE cedula='" & id & "'"
+            hres = hconn.Exec(dummyquer)
+           ' Print hres.Fields & " ver " & wtable.Max
+            datos[0] = hres!ape
+            datos[1] = hres!nom
+            Message.Info("Usuario/trabajador encontrado.. y enrolado.\n " & id & " : " & hres!ape & ", " & hres!nom)
     Endif
     ' ahora, si la aplicacion es al mismo tiempo en un solo lugar, verificar el modo directo (sin requisito de aprovacion)
     Print "Verificando si enrolado/verificado directo esta activado... " & direct_enroll
@@ -658,7 +665,7 @@ End
 
 '' procedimiento de verificacion de esclav.. digo de huella dactilar de usuarios/trabajadores existentes
 '' requiere el id (ficha/cedula/identificador) del usuario o trabajador, 
-'' retorna la data de la huella unicamente, ya que la verificacion se realiza por logica al vuelo
+'' retorna la data de la huella en base64 codificada, debe tomar esto y escribirla en fs en la ruta respectiva
 Public Sub sys_verify_user(id As String, Optional requested As String = "0") As String
     
     Dim wtable As Result        ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
@@ -675,14 +682,67 @@ Public Sub sys_verify_user(id As String, Optional requested As String = "0") As 
     Endif
 
     ' se esta registrando la huella de un nuevo usuario, verificamos no lo hayan enrolado antes
-    dummyquer = "SELECT cod_ficha, cod_ubicacion, hex_huelladactilar FROM sysasis_listado_id WHERE cod_ficha LIKE '" & id & "%'"
+    dummyquer = "SELECT count(cod_ficha) as existe, hex_huelladactilar FROM sysasis_listado_id WHERE cod_ficha LIKE '" & id & "'"
     Try wtable = hconn.Exec(dummyquer)
     If Error Then
         coderro = 2
     Else
-        vartempo = wtable.Count   ' en el delete no hacemos try, ya que en el select aseguramos cod_ficha existe dicho campo
+        vartempo = wtable!existe   ' en el delete no hacemos try, ya que en el select aseguramos cod_ficha existe dicho campo
         If vartempo >= 1 Then
             data = Base64(wtable["hex_huelladactilar"].Data)
+            Print "Usuario/trabajador encontrado.. para validar... " & coderro
+        Else
+            Print "usuario no existe, necesita ser enrolado primero o fue eliminado en una actualizacion de nomina.."
+            data = Null
+        Endif
+    Endif
+    
+    If coderro == 2 Then
+        Print " Error verificando el id: " & Error.Text & " " & Error.Code & " consulte con el departamento de nomina, y en ultimo sistemas."
+        Message.Warning(" Error verificando el id: " & Error.Text & " " & Error.Code & "\nPor favor vuelva a intentarlo, si persiste dicho error entonces\nconsulte con el departamento de nomina, a traves de la mensageria.")
+        Return Null
+    Else
+        
+    Endif
+    
+    ' TODO si modo directo activo ya podria verificarse, pero sino entonces logear que necesita aprobacion
+    closeConnection
+    Return data
+    
+End
+
+'' retorna la data del usuario segun el id dado.. retorna un arreglo de strings con la info
+Public Sub sys_search_user(id As String, Optional requested As String = "0") As String[]
+    
+    Dim wtable As Result        ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
+    Dim dummyquer As String     ' query para ingresar el usuario en la lista de enrolado
+    Dim hres As Result          ' abstraccion de resultados desde DB despeus de ejecutar query
+    Dim codubi As String        ' codigo de la ubicacion, deberia tomarse de la aplicacion pero bueh
+    Dim vartempo As Integer     ' usada para saber en cada query si vino resultado alguno
+    Dim coderro As Integer = 0  ' codigo error de la operacion, cero si nada fallido, y 1 hay errores
+    Dim datos As New String[2]   ' data del usuario para mostrar informativo en pantalla, asi no mete la pata el esclav.. err trabajador
+    
+    ' preparacion de la coneccion de base de datos
+    If isConected() == False Then
+        getConeccionDB()
+    Endif
+
+    dummyquer = "SELECT count(cod_ficha) as existe FROM sysasis_listado_id WHERE cod_ficha LIKE '" & id & "'"
+    Try wtable = hconn.Exec(dummyquer)
+    If Error Then
+        coderro = 2
+    Else
+        vartempo = wtable!existe   ' en el delete no hacemos try, ya que en el select aseguramos cod_ficha existe dicho campo
+        If vartempo >= 1 Then
+            dummyquer = "SELECT APELLIDOS as ape, nombres as nom from ConsolidadoTemp WHERE cedula='" & id & "'"
+            hres = hconn.Exec(dummyquer)
+           ' Print hres.Fields & " ver " & wtable.Max
+            Print "Usuario/trabajador encontrado.. para validar... " & coderro & " " & hres!ape & " " & hres!nom
+            datos[0] = hres!ape
+            datos[1] = hres!nom
+        Else
+            Print "usuario no existe, necesita ser enrolado primero o fue eliminado en una actualizacion de nomina.."
+            datos = Null
         Endif
     Endif
     
@@ -697,7 +757,7 @@ Public Sub sys_verify_user(id As String, Optional requested As String = "0") As 
     ' TODO si modo directo activo ya podria verificarse, pero sino entonces logear que necesita aprobacion
     Print "Usuario/trabajador encontrado.. para validar... " & coderro
     closeConnection
-    Return data
+    Return datos
     
 End
 
