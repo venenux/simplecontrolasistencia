@@ -83,6 +83,7 @@ End
 Public Function closeConnection()
     If isConected() == True Then
         hconn.Close
+        hconniscon = False
     Endif
 End
 
@@ -183,7 +184,6 @@ Public Function sysasis_init_registro()
     ' - - tabla de registros del horario de trabajo, es usada para enviar a OP y registrar los horarios laborados
     ' Create TABLE sysasis_registro(
     '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
-    '   cod_cedula VARCHAR(20) Not Null, - - cedula con nacionalidad y guin del trabajador, solo VNZ
     '   fec_registro Date Not Null, - - fecha del registro de dia a laborar
     '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad
     '   num_contador INTEGER Not Null Default 0, - - contador de fotos, si va a distintos lugares debe marcar salida
@@ -219,13 +219,14 @@ Public Function sysasis_init_registro()
         hTable = hconn.Tables.Add("sysasis_registro")
         With hTable.Fields
             .Add("cod_ficha", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
-            .Add("fec_registro", db.Date,, Null)   ' fecha del registro de dia de su huella dactilar
+            .Add("fec_registro", db.String,, "2013-07-16 09:00:00.000")   ' fecha del registro de dia de su huella dactilar
             .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad es CODSUC/CODGER
             .Add("num_contador", db.Integer,, 0)      ' contador de fotos, si va a distintos lugares debe marcar salida = 4
             .Add("horaentrada", db.Integer,, 0)      '
             .Add("minuentrada", db.Integer,, 0)      '
             .Add("horadescanso", db.Integer,, 0)      '
             .Add("minudescanso", db.Integer,, 0)      '
+            .Add("horareincor", db.Integer,, 0)      '
             .Add("minureincor", db.Integer,, 0)      '
             .Add("horasalida", db.Integer,, 0)      '
             .Add("minusalida", db.Integer,, 0)      '
@@ -528,7 +529,7 @@ End
 '' procedimiento de reclutamiento de nuevos esclav.. errr nuevos trabjadores a la lista
 '' requiere el id (ficha/cedula/identificador) del usuario o trabajador, 
 '' opcionalmente se le pasa la data del dedo, en ultimo caso las fotos de la cara y el dedo que no son importantes si la primera esta
-Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = False, data As Variant = Null, imag_cara As Picture = Null, imag_dedo As Picture = Null, nameid As String, apelid As String) As Integer
+Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = False, Optional ruta_data As String = "", data As Variant = Null, imag_cara As Picture = Null, imag_dedo As Picture = Null, nameid As String, apelid As String) As Integer
     
     Dim wtable As Result        ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
     Dim dummyquer As String     ' query para ingresar el usuario en la lista de enrolado
@@ -545,6 +546,9 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
     ' TODO , el id varia en digitos, por ahora usare completado a 8 digitos por orientarlo a la cedula Venezoelana
     fixcedula = id
     numdigits = Len(fixcedula)
+    If numdigits < 7 Then
+        fixedcedu = "0" & fixcedula
+    Endif
     If numdigits < 8 Then
         fixedcedu = "0" & fixcedula
     Else
@@ -559,7 +563,7 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
     
     
 
-    ' se esta registrando la huella de un nuevo usuario, verificamos no lo hayan enrolado antes
+    ' se esta registrando la huella de unDFi nuevo usuario, verificamos no lo hayan enrolado antes
     dummyquer = "SELECT count(cod_ficha) as existe FROM sysasis_enrolar_id WHERE cod_ficha LIKE '" & id & "'"
     Try hres = hconn.Exec(dummyquer)
     If Error Then
@@ -599,14 +603,20 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
             codubi = "998"
         Endif
     Endif
+    
     ' se enrola el usuario con el dedo, laimagen es opcional
     hconn.Begin
     wtable = hconn.Create("sysasis_enrolar_id")
     wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
     wtable!fec_registro = Date(Now) ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo"
     wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
-    wtable!hex_huelladactilar = data ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
-    wtable!hex_fotocara = imag_cara ' la foto por si no sirve el escanerdedo y hay que auditar la asistencia"
+    If Comp(ruta_data, "", gb.IgnoreCase) == 0 Then
+        wtable!hex_huelladactilar = data ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+    Else
+        Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+        wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+    Endif
+    'wtable!hex_fotocara = imag_cara ' la foto por si no sirve el escanerdedo y hay que auditar la asistencia"
     wtable!fec_actualizacion = Date(Now)
     wtable!cod_usuasys = "systemas"
     wtable.Update
@@ -617,12 +627,20 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
         coderro = 1
     Else
         coderro = 0
-            dummyquer = "SELECT APELLIDOS as ape, nombres as nom from ConsolidadoTemp WHERE cedula='" & id & "'"
-            hres = hconn.Exec(dummyquer)
-           ' Print hres.Fields & " ver " & wtable.Max
-            datos[0] = hres!ape
-            datos[1] = hres!nom
-            Message.Info("Usuario/trabajador encontrado.. y enrolado.\n " & id & " : " & hres!ape & ", " & hres!nom)
+            dummyquer = "SELECT APELLIDOS as ape, nombres as nom from ConsolidadoTemp WHERE cedula='" & fixcedula & "' and lower(estado) = 'activo'"
+            Try hres = hconn.Exec(dummyquer)
+            Print " error " & Error.Text & Error.Code & " rs " & hres.Count
+            If Not IsNull(hres) Then
+                If hres.Count > 0 Then
+                    ' Print hres.Fields & " ver " & wtable.Max
+                    datos[0] = hres!ape
+                    datos[1] = hres!nom
+                Endif
+            Else
+            datos[0] = "NO ENCONTRADO"
+            datos[1] = ""
+            Endif
+            Message.Info("Usuario/trabajador encontrado.. y enrolado.\n " & id & " : " & datos[0] & ", " & datos[1])
     Endif
     ' ahora, si la aplicacion es al mismo tiempo en un solo lugar, verificar el modo directo (sin requisito de aprovacion)
     Print "Verificando si enrolado/verificado directo esta activado... " & direct_enroll
@@ -635,19 +653,35 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
             vartempo = wtable!existe   ' en el delete no hacemos try, ya que en el select aseguramos cod_ficha existe dicho campo
             If vartempo >= 1 Then
                 Print "Enrolado directo activado, detectado que el usuario " & id & " existe, se actualizara su huella con esta nueva"
+                hconn.Begin
+                dummyquer = "DELETE FROM sysasis_listado_id WHERE cod_ficha LIKE '" & id & "%'"
+                hres = hconn.Exec(dummyquer)
+                Try hconn.Commit
+                If Error Then
+                    Print "Error manejando el registro previo del usuario... "
+                    coderro = 2
+                Endif
             Endif
             hconn.Begin
             wtable = hconn.Create("sysasis_listado_id")
             wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
             wtable!fec_registro = Date(Now) ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo"
             wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
-            wtable!hex_huelladactilar = data ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
-            wtable!hex_fotocara = imag_cara ' la foto por si no sirve el escanerdedo y hay que auditar la asistencia"
+            If Comp(ruta_data, "", gb.IgnoreCase) == 0 Then
+                wtable!hex_huelladactilar = data ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+            Else
+                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+                wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+            Endif
+           'wtable!hex_fotocara = imag_cara ' la foto por si no sirve el escanerdedo y hay que auditar la asistencia"
             wtable!fec_actualizacion = Date(Now)
             wtable!cod_usuasys = "systemas"
             wtable.Update
+            If coderro == 2 Then
+                hconn.Rollback
+            Endif
             Try hconn.Commit
-            If Error Then
+            If Error Or coderro == 2 Then
                 Print " Error registrando el id: " & Error.Text & " error " & Error.Code & ""
                 Message.Warning(" Error registrando el id: " & Error.Text & " " & Error.Code & "\nPor favor vuelva a intentarlo, si persiste dicho error entonces\nconsulte con el departamento de nomina, a traves de la mensageria.")
                 coderro = 1
@@ -666,7 +700,7 @@ End
 '' procedimiento de verificacion de esclav.. digo de huella dactilar de usuarios/trabajadores existentes
 '' requiere el id (ficha/cedula/identificador) del usuario o trabajador, 
 '' retorna la data de la huella en base64 codificada, debe tomar esto y escribirla en fs en la ruta respectiva
-Public Sub sys_verify_user(id As String, Optional requested As String = "0") As String
+Public Sub sys_verify_user(id As String, Optional ruta_data As String = "", Optional requested As String = "0") As Variant
     
     Dim wtable As Result        ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
     Dim dummyquer As String     ' query para ingresar el usuario en la lista de enrolado
@@ -674,13 +708,33 @@ Public Sub sys_verify_user(id As String, Optional requested As String = "0") As 
     Dim codubi As String        ' codigo de la ubicacion, deberia tomarse de la aplicacion pero bueh
     Dim vartempo As Integer     ' usada para saber en cada query si vino resultado alguno
     Dim coderro As Integer = 0  ' codigo error de la operacion, cero si nada fallido, y 1 hay errores
-    Dim data As String = Null  ' data del dedo a retornar del usuario, se coloca en fs para engañar a la lib
+    Dim data As Variant         ' data del dedo a retornar del usuario, se coloca en fs para engañar a la lib
+    
+    Dim myFinger As Stream  ' TODO probando, remover e implementar fuera del modulo DB
+    Dim resultado_backend As String
+    
+    Dim fixcedula As String
+    Dim numdigits As Integer
+    Dim fixedcedu As String
     
     ' preparacion de la coneccion de base de datos
     If isConected() == False Then
         getConeccionDB()
     Endif
 
+    ' TODO , el id varia en digitos, por ahora usare completado a 8 digitos por orientarlo a la cedula Venezoelana
+    fixcedula = id
+    numdigits = Len(fixcedula)
+    If numdigits < 7 Then
+        fixedcedu = "0" & fixcedula
+    Endif
+    If numdigits < 8 Then
+        fixedcedu = "0" & fixcedula
+    Else
+        fixedcedu = fixcedula
+    Endif
+    id = fixedcedu
+    
     ' se esta registrando la huella de un nuevo usuario, verificamos no lo hayan enrolado antes
     dummyquer = "SELECT count(cod_ficha) as existe, hex_huelladactilar FROM sysasis_listado_id WHERE cod_ficha LIKE '" & id & "'"
     Try wtable = hconn.Exec(dummyquer)
@@ -689,7 +743,21 @@ Public Sub sys_verify_user(id As String, Optional requested As String = "0") As 
     Else
         vartempo = wtable!existe   ' en el delete no hacemos try, ya que en el select aseguramos cod_ficha existe dicho campo
         If vartempo >= 1 Then
-            data = Base64(wtable["hex_huelladactilar"].Data)
+            data = wtable["hex_huelladactilar"]
+            If Exist(ruta_data) Then
+                Kill ruta_data
+            Endif
+            If Comp(ruta_data, "", gb.IgnoreCase) == 0 Then
+                Print "Guardando data por bean/write archivo " & ruta_data & " desde el blob directamente."
+            'Close myFinger
+            Else
+                ' Print "Guardando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+                ' File.Save(ruta_data, wtable["hex_huelladactilar"].Data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+                dummyquer = "sqlite3 " & hconndbnam & " \" SELECT quote(hex_huelladactilar) FROM sysasis_enrolar_id WHERE cod_ficha Like '" & id & "'\" | sed -e \"s/^X'//\" -e \"s/'$//\" | xxd -r -p > " & ruta_data
+                Print dummyquer
+                Shell dummyquer & " 2>&1" To resultado_backend
+                Print resultado_backend
+            Endif
             Print "Usuario/trabajador encontrado.. para validar... " & coderro
         Else
             Print "usuario no existe, necesita ser enrolado primero o fue eliminado en una actualizacion de nomina.."
@@ -720,36 +788,53 @@ Public Sub sys_search_user(id As String, Optional requested As String = "0") As 
     Dim codubi As String        ' codigo de la ubicacion, deberia tomarse de la aplicacion pero bueh
     Dim vartempo As Integer     ' usada para saber en cada query si vino resultado alguno
     Dim coderro As Integer = 0  ' codigo error de la operacion, cero si nada fallido, y 1 hay errores
-    Dim datos As New String[2]   ' data del usuario para mostrar informativo en pantalla, asi no mete la pata el esclav.. err trabajador
+    Dim datos As New String[3]   ' data del usuario para mostrar informativo en pantalla, asi no mete la pata el esclav.. err trabajador
+    
+    Dim fixcedula As String
+    Dim numdigits As Integer
+    Dim fixedcedu As String
     
     ' preparacion de la coneccion de base de datos
     If isConected() == False Then
         getConeccionDB()
     Endif
 
+    ' TODO , el id varia en digitos, por ahora usare completado a 8 digitos por orientarlo a la cedula Venezoelana
+    fixcedula = id
+    numdigits = Len(fixcedula)
+    If numdigits < 8 Then
+        fixedcedu = "0" & fixcedula
+    Else
+        fixedcedu = fixcedula
+    Endif
+    id = fixedcedu
+    
     dummyquer = "SELECT count(cod_ficha) as existe FROM sysasis_listado_id WHERE cod_ficha LIKE '" & id & "'"
+    Print dummyquer
     Try wtable = hconn.Exec(dummyquer)
     If Error Then
         coderro = 2
     Else
-        vartempo = wtable!existe   ' en el delete no hacemos try, ya que en el select aseguramos cod_ficha existe dicho campo
-        If vartempo >= 1 Then
-            dummyquer = "SELECT APELLIDOS as ape, nombres as nom from ConsolidadoTemp WHERE cedula='" & id & "'"
-            hres = hconn.Exec(dummyquer)
-           ' Print hres.Fields & " ver " & wtable.Max
-            Print "Usuario/trabajador encontrado.. para validar... " & coderro & " " & hres!ape & " " & hres!nom
-            datos[0] = hres!ape
-            datos[1] = hres!nom
-        Else
-            Print "usuario no existe, necesita ser enrolado primero o fue eliminado en una actualizacion de nomina.."
-            datos = Null
+         If Not IsNull(wtable) Then
+             If Val(wtable!existe) >= 1 And wtable.Count > 0 Then
+                 dummyquer = "SELECT APELLIDOS as ape, nombres as nom, codger as cub from ConsolidadoTemp WHERE ficha like '" & id & "'"
+                 hres = hconn.Exec(dummyquer)
+                ' Print hres.Fields & " ver " & wtable.Max
+                 Print "Usuario/trabajador encontrado.. para validar... " & coderro & " " & hres!ape & " " & hres!nom & " " & hres!cub
+                 datos[0] = hres!ape
+                 datos[1] = hres!nom
+                 datos[2] = hres!cub
+            Else
+                Print "usuario no existe, necesita ser enrolado primero o fue eliminado en una actualizacion de nomina.."
+                datos = Null
+            Endif
         Endif
     Endif
     
     If coderro == 2 Then
         Print " Error verificando el id: " & Error.Text & " " & Error.Code & " consulte con el departamento de nomina, y en ultimo sistemas."
         Message.Warning(" Error verificando el id: " & Error.Text & " " & Error.Code & "\nPor favor vuelva a intentarlo, si persiste dicho error entonces\nconsulte con el departamento de nomina, a traves de la mensageria.")
-        Return False
+        Return Null
     Else
         
     Endif
@@ -762,9 +847,217 @@ Public Sub sys_search_user(id As String, Optional requested As String = "0") As 
 End
 
 
+Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, minu As Integer, Optional ruta_foto As String = "", ruta_data As String = "", data As Variant) As Integer
+    
+
+    ' - - tabla de registros del horario de trabajo, es usada para enviar a OP y registrar los horarios laborados
+    '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+    '   cod_cedula VARCHAR(20) Not Null, - - cedula con nacionalidad y guin del trabajador, solo VNZ
+    '   fec_registro Date Not Null, - - fecha del registro de dia a laborar
+    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad
+    '   num_contador INTEGER Not Null Default 0, - - contador de fotos, si va a distintos lugares debe marcar salida
+    '   horaentrada INTEGER Null, - - hora de entrada del dia
+    '   minuentrada INTEGER Null, - - minuto de entrada en dicha hora
+    '   horadescanso INTEGER Null, - - hora de descanso del dia
+    '   minudescanso INTEGER Null, - - minuto de descanso en dicha respectiva hora
+    '   horareincor INTEGER Null, - - hora que se reincorpora del descanso
+    '   minureincor INTEGER Null, - - minuto de reincorporacion de dicha hora
+    '   horasalida INTEGER Null, - - hora de salida del dia laborado
+    '   minusalida INTEGER Null, - - minuto de salida de dich hora
+    '   hex_huelladactilar BLOB Not Null, - - opcional, huella dactilar del usuario/trabajado ficha, opcional, es HEXFING
+    '   hex_fotocara BLOB Not Null, - - opcional, foto de la cara es OPCIONAL y no necesario
+    '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez NOTA FUNCIONA CON DEFAULT NOW
+    '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
+    '   - - si el personal es muy movido, tendra registros en distintas ubicaciones,
+    '   - - el ubicacion ayuda a descartar duplicados.esto amerita tener un SP que maneje los datos
+    '   - - la expotacio se realizara en un vista que colocara el calculo de las horas y
+    '   - - estos registros "dispersos"(ejemplo, entro en castellana, su primera salida debe ser de castellana antes de ir a otro lado)
+    '   - - diferencia entre registro no puede ser menor a 1 / 3 hora y mayor a 6 horas CUANDO SEAN SELLOS DISTINTOS
+    ' Poruqe dos columnas de fecha? : porque la segunda es por defecto la fecha y hora actual, si alguien manipula, se registra
+    ' lo que significa que si alguien inserta alguna hora de trabajo a mano, se vera la trampa si no ejecuta completo el query
+
+    Dim wtable As Result        ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
+    Dim dummyquer As String     ' query para manejar el usuario en los registros
+    Dim hres As Result          ' abstraccion de resultados desde DB despeus de ejecutar query
+    Dim codubi As String        ' codigo de la ubicacion, deberia tomarse de la aplicacion pero bueh
+    Dim entradas As Integer     ' veces que tiene registros de horarion en la tabla...
+    Dim vartempo As Integer     ' usada para saber en cada query si vino resultado alguno
+    Dim coderro As Integer = -1  ' codigo error de la operacion, cero si nada falla, y 1 hay errores
+    Dim datos As New String[2]   ' data del usuario para mostrar informativo en pantalla, asi no mete la pata el esclav.. err trabajador
+    
+    Dim fixcedula As String
+    Dim numdigits As Integer
+    Dim fixedcedu As String
+    
+    ' TODO , el id varia en digitos, por ahora usare completado a 8 digitos por orientarlo a la cedula Venezoelana
+    fixcedula = id
+    numdigits = Len(fixcedula)
+    If numdigits < 8 Then
+        fixedcedu = "0" & fixcedula
+    Else
+        fixedcedu = fixcedula
+    Endif
+    id = fixedcedu
+    
+    ' //////////// INICIO CODIGO TOMADO DE LEONARDO SALAZAR; EL MANTENDRA DICHO CODIGO //////////////////////
+    datos = sys_search_user(id)     'primero se valida la cedula en la tabla de empleados para asegurarno de que esta activo y trabaja
+    If Comp(Trim(datos[0]), "", gb.IgnoreCase) == 0 Then 
+        entradas = -2     ' si no esta activo no traera nada y no se le creara un registro...
+    Else
+        codubi = datos[2]
+    Endif
+    ' preparacion de la coneccion de base de datos
+    If isConected() == False Then
+        getConeccionDB()
+    Endif
+    ' resultado = con.Exec("select \"Ficha\" from empleados_activos where \"Ficha\"='" & CStr(TextBox1.Text) & "' and \"Estado\"='Activo'") 
+    dummyquer = "select cod_ficha, " 
+    dummyquer = dummyquer & " horaentrada, minuentrada, "
+    dummyquer = dummyquer & " horadescanso, minudescanso, "
+    dummyquer = dummyquer & " horareincor, minureincor, "
+    dummyquer = dummyquer & " horasalida, minusalida "
+    dummyquer = dummyquer & " from sysasis_registro "
+    dummyquer = dummyquer & " where cod_ficha = '" & id & "' and cod_ubicacion = '" & codubi & "' "
+    ' estos querys son ambiguos, dado el usuario si tiene distintos codigos de ubicacion tendra distintos registros, asi que habra que unificarlos o usar codigos de ubicacion distintos
+    Print dummyquer
+    hres = hconn.Exec(dummyquer) ' resultado = con.Exec("select \"Ficha\" from empleados_activos where \"Ficha\"='" & CStr(TextBox1.Text) & "' and \"Estado\"='Activo'")
+    entradas = 5
+    Print " registo : " & id & " " & codubi & " " & hora & ":" & minu & ""
+    If Not IsNull(hres) Then
+        If hres.Count > 0 Then
+            Print "Horas: he: " & hres!horaentrada & " hd: " & hres!horadescanso & " hr: " & hres!horareincor & " hs: " & hres!horasalida
+            If hres!horaentrada <> 0 And hres!horadescanso == 0 And hres!horareincor == 0 And hres!horasalida == 0 Then ' nadie entra a las 12 de la noche en esta empresa
+                entradas = 2
+            Endif
+            If hres!horaentrada <> 0 And hres!horadescanso <> 0 And hres!horareincor == 0 And hres!horasalida == 0 Then
+                entradas = 3
+            Endif
+            If hres!horaentrada <> 0 And hres!horadescanso <> 0 And hres!horareincor <> 0 And hres!horasalida == 0 Then
+                entradas = 4
+            Endif
+        Else
+            entradas = 1
+        Endif
+    Else
+            entradas = 1
+    Endif
+    ' se registra la hora del usuario con el dedo, laimagen es opcional, peropor ahora se le pide siempre
+    hconn.Begin
+    Select Case entradas
+        Case 1
+            wtable = hconn.Create("sysasis_registro")
+            wtable!cod_ficha = id
+            wtable!fec_registro = Format$(Now, "yyyy-mm-dd hh:00:00.000") ' "2013-07-16 14:11:21.722"
+            wtable!cod_ubicacion = codubi
+            wtable!num_contador = entradas
+            wtable!horaentrada = hora
+            wtable!minuentrada = minu
+            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+                wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+            Endif
+            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+                wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+            Endif
+            wtable!fec_actualizacion = Date(Now)
+            wtable!cod_usuasys = "systemas"
+            wtable.Update
+        Case 2
+            wtable = hconn.Edit("sysasis_registro", "cod_ficha = &1 and cod_ubicacion = &2 ", id, codubi)
+            wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
+            wtable!fec_registro = Format$(Now, "yyyy-mm-dd hh:00:00.000") ' "2013-07-16 14:11:21.722"
+            wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
+            wtable!num_contador = entradas
+            wtable!horadescanso = hora
+            wtable!minudescanso = minu
+            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+                wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+            Endif
+            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+                wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+            Endif
+            wtable!fec_actualizacion = Date(Now)
+            wtable!cod_usuasys = "systemas"
+            wtable.Update
+        Case 3
+            wtable = hconn.Edit("sysasis_registro", "cod_ficha = &1 and cod_ubicacion = &2 ", id, codubi)
+            wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
+            wtable!fec_registro = Format$(Now, "yyyy-mm-dd hh:00:00.000") ' "2013-07-16 14:11:21.722"
+            wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
+            wtable!num_contador = entradas
+            wtable!horareincor = hora
+            wtable!minureincor = minu
+            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+                wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+            Endif
+            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+                wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+            Endif
+            wtable!fec_actualizacion = Date(Now)
+            wtable!cod_usuasys = "systemas"
+            wtable.Update
+        Case 4
+            wtable = hconn.Edit("sysasis_registro", "cod_ficha = &1 and cod_ubicacion = &2 ", id, codubi)
+            wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
+            wtable!fec_registro = Format$(Now, "yyyy-mm-dd hh:00:00.000") ' "2013-07-16 14:11:21.722"
+            wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
+            wtable!num_contador = entradas
+            wtable!horasalida = hora
+            wtable!minusalida = minu
+            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+                wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+            Endif
+            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+                wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+            Endif
+            wtable!fec_actualizacion = Date(Now)
+            wtable!cod_usuasys = "systemas"
+            wtable.Update
+        Case Else
+            Print "Ya ud marco su salida de la localidad que colocamos"
+    End Select
+    Try hconn.Commit
+    ' //////////// FIN DE CODIGO TOMADO DE LEONARDO SALAZAR; EL MANTENDRA DICHO CODIGO //////////////////////
+    If Error Then
+        Print " Error registrando el id: " & Error.Text & " error " & Error.Code & ""
+        Message.Warning(" Error registrando el id: " & Error.Text & " " & Error.Code & "\nPor favor vuelva a intentarlo, si persiste dicho error entonces\nconsulte con el departamento de nomina, a traves de la mensageria.")
+        entradas = -1
+    Endif
+   Print "Usuario/trabajador registrado, y confirmado su " & entradas & " al trabajo. " & coderro
+    closeConnection
+    Return entradas
+    
+End
+
                     
 '' empleada para verificar el correcto seguimiento de inicio de la gestin de datos, con true, cada proceso extra no fallaria
 '' verificador de coneccion activa, getconnection establece True y crea una nueva si es necesario
 Public Sub isConected() As Boolean
     Return hconniscon ' getconection establece esto a true si hay una coneccion activa
+End
+
+'' si el id es menor a 8 completa a 8, (por ahora asi, en el futuro, completar hasta un patron)
+Public Sub fixcedula(id As String) As String
+    
+    Dim fixcedula As String
+    Dim numdigits As Integer
+    Dim fixedcedu As String
+
+    fixcedula = id
+    numdigits = Len(fixcedula)
+    If numdigits < 8 Then
+        fixedcedu = "0" & fixcedula
+    Else
+        fixedcedu = fixcedula
+    Endif
+    id = fixedcedu
+
+    
 End

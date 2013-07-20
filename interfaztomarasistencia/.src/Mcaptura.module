@@ -158,6 +158,40 @@ Public Sub funcionando_escaner()
 
 End
 
+Public Sub verificar_escaner() As Boolean
+    
+    Dim resultado_backend As String ' usado para obtener una config desde el programa backend
+    Dim modoverificado As String    ' modo de verificado, por defecto ambos, si falla escaner solo cara
+
+    Shell scanerdedocmd & "  identify interfaz 2>&1 " To resultado_backend
+    LineasProcesamiento = Split(resultado_backend, "\n")
+    ' 0 = <nombre humano del escaner> ejemplo en modo dummy: Dummy/Falso Quien carizo eres tu finger/dedo scaner 0000
+    ' 1 = <id numerico> : 0063 es dummy
+    ' 2 = <tipo> : 00000063 es dummy
+    ' 3 = rutafiledata =<HOME>/.fprint/prints/<rutadevice>/<dedo> generalemnte debe ser obviado en modo dummy
+    ' 4 = nombreimagen = noencontrado.pgm o usuarioid.pgm
+    If LineasProcesamiento.Length <= 2 Then
+        Print " backend error " & LineasProcesamiento[0]
+        Message.Error("El software de escaneo, esta dañado, ¿se apago la maquina mal? ¿se instalo el software mal?")
+        setModoEmulado(True)
+        est_app_asis = 3
+        Return False
+    Else
+        If Comp(LineasProcesamiento[1], "0063", 1) == 0 Then
+            setModoEmulado(True)
+        Else
+            setModoEmulado(False)
+        Endif
+        Print "Empleando escaner " & LineasProcesamiento[0] & " usando ruta " & LineasProcesamiento[3]
+        FMain.datos.setRutaFprintData(User.Home & "/" & LineasProcesamiento[3])
+        FMain.datos.setStatusEscaner(True)
+        FMain.datos.setModoVerificado("ambos")
+        est_app_asis = 0
+        Return itsModoEmulado()
+    Endif
+End
+
+
 '' proceso para escanear el dedo del esclav.. err trabajador, 
 '' toma un id (usuario) con dedo 1 (pulgar izq), y null data de dedos.
 '' se puede dejar sin especificar el dedo y datafinger, pero enonces
@@ -200,11 +234,13 @@ Public Sub scan_dedo_rostro(usuario As String, Optional dedo As Integer = 1, Opt
     ' eliminamos cualquier archivo previo
     If Exist(ruta_img_foto) Then Kill ruta_img_foto
     If Exist(ruta_img_huella) Then Kill ruta_img_huella
+    If Exist(ruta_data_dactilar) Then Kill ruta_data_dactilar
     
     FMain.mensageusuario.Text = "Registrado " & usuario
     FMain.inputficha.Hide
     FMain.mensageusuario.Show
 
+    verificar_escaner
     Print scanerdedocmd & " interfaz enroll finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1"
     Shell scanerdedocmd & " interfaz enroll finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1" To resultado_backend
     Print resultado_backend
@@ -221,7 +257,7 @@ Public Sub scan_dedo_rostro(usuario As String, Optional dedo As Integer = 1, Opt
     ' cargamos los datos del usuario enrolado
     If itsModoEmulado() == False Then
         ' rescatamos y vemos la ruta de donde esta la data del dedo, la ruta ya  yo la habia preguntado
-        ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
+        'ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
         FMain.datos.setDataBlob(File.Load(ruta_data_dactilar))
         ' rescatamos y endosamos la data de la ruta que rescatamos
         datadedocodif = Base64(File.Load(ruta_data_dactilar))
@@ -233,6 +269,7 @@ Public Sub scan_dedo_rostro(usuario As String, Optional dedo As Integer = 1, Opt
     FMain.datos.setStatusEnrolado(LineasProcesamiento[3])
     ' operacion exitosa, mostramos la foto pero no permitimos pulsar boton hasta que vea su huella
     FMain.img_dedo_mostrar.Show
+    
     ' tiramos una fotico de la cara que pone el esclavo.. err digo trabajador
     getCamera().Save(ruta_img_foto)
     ' cargamos la fotico del rostro en el GUI interfaz grafica al usuario
@@ -242,11 +279,12 @@ Public Sub scan_dedo_rostro(usuario As String, Optional dedo As Integer = 1, Opt
     ' gestionamos hacia base de datos
     dbmanagdat = New DBmandat
     dbmanagdat.getConeccionDB()
-    resultado_dbmanat = dbmanagdat.sys_enroll_user(usuario, FMain.datos.itsModoDirecto(), FMain.datos.getDataBlob(), Null, Null, "COLOCAR_NOMBRE", "COLOCAR_APELLIDO")
+    resultado_dbmanat = dbmanagdat.sys_enroll_user(usuario, FMain.datos.itsModoDirecto(), ruta_data_dactilar, FMain.datos.getDataBlob(), Null, Null, "COLOCAR_NOMBRE", "COLOCAR_APELLIDO")
     Print "proceso de enrolado termino con resultqado : " & resultado_dbmanat
     ' eliminamos rastro, dado ya tenemos la foto dactilar y el archivo, incluso encriptado
-    Kill ruta_img_huella
     Kill ruta_img_foto
+    Kill ruta_img_huella
+    Kill ruta_data_dactilar
     FMain.datos.setDataBlobCrypted(Null)
     Return
 
@@ -266,7 +304,7 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
 
     Dim resultado_backend As String     ' usado para obtener una config desde el programa backend
     Dim resultado_dbmanat As Integer    ' usade para otener un estado de confirmacion de exito de la operacion en db
-    Dim datadedocodif As String         ' usado para manejar la dada binaria del dedo escaneado
+    Dim datadedocodif As Stream         ' usado para manejar la dada binaria del dedo escaneado
     Dim ruta_data_dactilar As String    ' la ruta de la data donde debe estar la huella dactilar
     Dim ruta_img_huella As String       ' la direccion del archivo cara imagen resultante
     Dim ruta_img_foto As String         ' la direccion del archivo huella imagen resultante
@@ -277,7 +315,7 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
     Dim hconn As Connection             ' conexcion a DB sqlite, offline, fault toleran
     Dim datos As String[]
     
-    Dim verificado As String
+    Dim verificado As String = ""       ' si esta vacio no se encontro id, false no paso el dactilar, true, puede trabajar
 
     Randomize CInteger(Val(Format$(Now, "ddmmyyyyhhnnss")))
     ramdi = Int(Rnd * 100000000)
@@ -303,55 +341,70 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
     dbmanagdat = New DBmandat
     hconn = dbmanagdat.getConeccionDB()
     ' TODO la funcion dbmanagdat.sys_verify_user(usuario, "1") rescata lso datos, en binaryo blob de base64, necesito saber como guardarlos
-    FMain.datos.setDataBlobCrypted(dbmanagdat.sys_verify_user(usuario, "1"))
     Print " salvando " & ruta_data_dactilar
-    'Open UnBase64(dbmanagdat.sys_verify_user(usuario, "1"))
+    dbmanagdat.sys_verify_user(usuario, ruta_data_dactilar)
     FMain.mensageusuario.Text = "Verificando " & usuario
     FMain.inputficha.Hide
     datos = dbmanagdat.sys_search_user(usuario, Null)
-    FMain.mensageusuario.Text = usuario & ": " & datos[0] & "," & datos[1]
-    FMain.mensageusuario.Show
-
-    Print scanerdedocmd & " interfaz verify finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1"
-    Shell scanerdedocmd & " interfaz verify finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1" To resultado_backend
-    Print resultado_backend
-    LineasProcesamiento = Split(resultado_backend, "\n")
-    ' 0 = nombreimagen=<ruta>/noencontrado.pgm
-    ' 1 = rutafiledata =<HOME>/.fprint/prints/<rutadevice>/<dedo> obviado en modo dummy
-    ' 2 = nombre = noencontrado.pgm
-    ' 3 = status = TRUE, FALSE si esta en modo dummy
-    ' 4 = salida = 0
-
-    ' tomamos el tiempo para solo mostrar la fotico unos segundos
-    FMain.setHoraAlEscanear
-    FMain.tiempotranscurrido_imagenes.Start     ' iniciamos el contador, solo mostrara imagenes por 5 segundos
-    ' cargamos los datos del usuario enrolado
-    If itsModoEmulado() == False Then
-        ' rescatamos y vemos la ruta de donde esta la data del dedo
-        ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
-        ' verificamos "true" de dactilar
-        verificado = LineasProcesamiento[3]
-        ' cargamos la fotico del dedo en el GUI interfaz grafica al usuario
-        FMain.img_dedo_mostrar.Picture = Picture[ruta_img_huella]
+    FMain.mensageusuario.Text = "ID invalido: el id/cedula ingresado no es valido.<br>Verifique e ingrese de nuevo o consulte su jefe inmediato.<br> Si su huella no haya sido registrada, pida sea registrada."
+    If Not IsNull(datos) Then
+        FMain.mensageusuario.Text = usuario & ": " & datos[0] & "," & datos[1]
+        Print scanerdedocmd & " interfaz verify finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1"
+        Shell scanerdedocmd & " interfaz verify finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1" To resultado_backend
+        Print resultado_backend
+        LineasProcesamiento = Split(resultado_backend, "\n")
+        ' 0 = nombreimagen=<ruta>/noencontrado.pgm
+        ' 1 = rutafiledata =<HOME>/.fprint/prints/<rutadevice>/<dedo> obviado en modo dummy
+        ' 2 = nombre = noencontrado.pgm
+        ' 3 = status = TRUE, FALSE si esta en modo dummy
+        ' 4 = salida = 0
+    
+        ' tomamos el tiempo para solo mostrar la fotico unos segundos
+        FMain.setHoraAlEscanear
+        FMain.tiempotranscurrido_imagenes.Start     ' iniciamos el contador, solo mostrara imagenes por 5 segundos
+        ' cargamos los datos del usuario enrolado
+        If itsModoEmulado() == False Then
+            ' rescatamos y vemos la ruta de donde esta la data del dedo
+            ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
+            ' verificamos "true" de dactilar
+            verificado = LineasProcesamiento[3]
+            ' cargamos la fotico del dedo en el GUI interfaz grafica al usuario
+            FMain.img_dedo_mostrar.Picture = Picture[ruta_img_huella]
+        Endif
+        ' informamos de si fue enrolado/verificado correctamente por el backend
+        FMain.datos.setStatusVerificado(LineasProcesamiento[3])
+        ' operacion exitosa, mostramos la foto pero no permitimos pulsar boton hasta que vea su huella
+        FMain.img_dedo_mostrar.Show
+        ' tiramos una fotico de la cara que pone el esclavo.. err digo trabajador
+        getCamera().Save(ruta_img_foto)
+        ' cargamos la fotico del rostro en el GUI interfaz grafica al usuario
+        FMain.img_cara_mostrar.Picture = Picture[ruta_img_foto]
+        FMain.img_cara_mostrar.Show
+        FMain.img_video_mostrar.Visible = False
+    Else
+        FMain.setHoraAlEscanear
+        FMain.tiempotranscurrido_imagenes.Start     ' iniciamos el contador, solo mostrara imagenes por 5 segundos
     Endif
-    ' informamos de si fue enrolado/verificado correctamente por el backend
-    FMain.datos.setStatusVerificado(LineasProcesamiento[3])
-    ' operacion exitosa, mostramos la foto pero no permitimos pulsar boton hasta que vea su huella
-    FMain.img_dedo_mostrar.Show
-    ' tiramos una fotico de la cara que pone el esclavo.. err digo trabajador
-    getCamera().Save(ruta_img_foto)
-    ' cargamos la fotico del rostro en el GUI interfaz grafica al usuario
-    FMain.img_cara_mostrar.Picture = Picture[ruta_img_foto]
-    FMain.img_cara_mostrar.Show
-    FMain.img_video_mostrar.Visible = False
+    FMain.panelidverificar.Hide
+
     ' gestionamos hacia base de datos
-    dbmanagdat = New DBmandat
-    dbmanagdat.getConeccionDB()
-    'resultado_dbmanat = dbmanagdat.sys_enroll_user(usuario, FMain.datos.itsModoDirecto(), FMain.datos.getDataBlob(), Null, Null, "COLOCAR_NOMBRE", "COLOCAR_APELLIDO")
+    If verificado == "TRUE" Then
+        dbmanagdat = New DBmandat
+        resultado_dbmanat = dbmanagdat.sys_writehistory_user(usuario, datos[2], Format$(Now, "hh"), Format$(Now, "nn"), ruta_img_foto, ruta_data_dactilar, Null)
+        If resultado_dbmanat > 4 Or resultado_dbmanat < 0 Then
+            FMain.mensageusuario.Text = "Sr(a) " & datos[0] & "," & datos[1] & ", Ud ya marco el final de su dia laboral. No se le crearan mas registros de asistencias"
+        Endif
+    Endif
+    If verificado == "FALSE" Then
+        FMain.mensageusuario.Text = "Verificacion incorrecta: " & datos[1] & ", coloque el CENTRO de la yema del dedo que enrolo, ningun otro, la punta le la UÑA toque/arriba el borde superior. La IMAGEN debe RESULTAR EN UN REMOLINO DE LINEAS."
+    Endif
+    FMain.mensageusuario.Show
+    'un print de log alli y listo
     Print "proceso de enrolado termino con resultqado : " & verificado
     ' eliminamos rastro, dado ya tenemos la foto dactilar y el archivo, incluso encriptado
-    Try Kill ruta_img_huella
     Try Kill ruta_img_foto
+    Try Kill ruta_img_huella
+    Try Kill ruta_data_dactilar
     Return
 
 End
