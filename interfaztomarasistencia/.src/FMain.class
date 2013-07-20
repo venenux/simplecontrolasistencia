@@ -60,22 +60,6 @@ Public Sub iniciarInterfaz()
 
 End
 
-
-Public Sub algo()
-    
-    ' If Mcaptura.est_app_asis == 9       ' si el modulo de captura esta en estado 9 puedo arrrancar con los datos
-    '     dbmanagdat.syncronizar()
-    ' Endif
-    ' If Mcaptura.est_app_asis == 1       ' si el modulo de captura esta en estado 1 invoco DB enrolado del id
-    '     dbmanagdat.enrolar()
-    ' Endif
-    ' If Mcaptura.est_app_asis == 2       ' si el modulo de captura entr estado 2 invoco DB verificar el id contra el enrolado
-    '     dbmanagdat.verificar()
-    ' Endif
-    
-End
-
-
 '' proceso que prepara el dispositivo de escanedo dactilar, establece un semaforo para saber cuando esta disponible
 Public Sub iniciarEscaner()
     Mcaptura.funcionando_escaner()
@@ -111,8 +95,11 @@ Public Sub tiempotranscurrido_imagenes_Timer()
         Print "Proceso de escaneo/verificacion finalizado."
         ' FMain.iniciarEscaner
         ' FMain.iniciarCamara
-        img_cara_mostrar.Picture.Flush
-        img_cara_mostrar.Picture.Clear
+        If Not IsNull(img_cara_mostrar.Picture) Then
+            img_cara_mostrar.Picture.Flush
+            img_cara_mostrar.Picture.Clear
+        Endif
+        panelidverificar.Show
         inputficha.Text = ""
     Endif
     Print "... estado " & Mcaptura.est_app_asis
@@ -135,21 +122,13 @@ Public Sub inputficha_GotFocus()
     inputficha.Text = ""
 End
 
-Public Sub Form_KeyPress()
-    If Key.code = Key.Return Or Key.code = Key.Enter Then
-        If inputficha.Text == mensageinput Or Trim(inputficha.Text) == "" Then
-            inputficha.SetFocus
-        Else
-            btnscanear_Click
-        Endif
-    Endif
-End
-
 '' al activasrse, llama el evento de escaneo,
 '' tomando desde la instancia de datos, el usuario,
 '' y deteniendo la hora para que se muestre cuando se escaneo
 Public Sub btnscanear_Click()
-    inputficha.SetFocus
+    ' FAuth.Show
+    ' If FAuth.btnenviar.
+    ' inputficha.SetFocus
     If inputficha.Text == mensageinput Or Trim(inputficha.Text) == "" Then
         Message.Info(mensageinput)
         Return
