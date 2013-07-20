@@ -1,0 +1,32 @@
+' Gambas class file
+
+Public tiempodado As Long
+Public ubicacion As Long
+Private confirmacion As Long
+
+'' establece el codigo de confirmacion para poder enrolar
+Public Function setConfirmacioncode(code As Long)
+    confirmacion = code
+End
+Public Function getConfirmacioncode() As Long
+    Return confirmacion
+End
+
+
+
+
+Public Sub btnenviar_Click()
+
+    If Trim(inputid.Text) == "" Then
+        Message.Error("Ingrese su identificacion (usuario de la mensageria)")
+        inputid.SetFocus
+    Endif
+
+    If Trim(inputcodigo.Text) == "" Then
+        Message.Error("Ingrese su identificacion (usuario de la mensageria)")
+        inputcodigo.SetFocus
+    Else
+        setConfirmacioncode(Val(inputcodigo))
+    Endif
+
+End
