@@ -19,6 +19,7 @@
   }
   { inputcodigo TextBox
     MoveScaled(33,32,14,4)
+    Password = True
   }
   { labelid Label
     MoveScaled(25,28,7,3)
@@ -29,5 +30,10 @@
     MoveScaled(25,32,7,3)
     Text = ("codigo:")
     Alignment = Align.Right
+  }
+  { btncancel Button
+    MoveScaled(3,32,14,4)
+    Text = ("Cancelar")
+    Cancel = True
   }
 }

@@ -21,12 +21,24 @@ Public Sub btnenviar_Click()
         Message.Error("Ingrese su identificacion (usuario de la mensageria)")
         inputid.SetFocus
     Endif
+    FMain.inputid = inputid.Text
 
     If Trim(inputcodigo.Text) == "" Then
         Message.Error("Ingrese su identificacion (usuario de la mensageria)")
         inputcodigo.SetFocus
     Else
-        setConfirmacioncode(Val(inputcodigo))
+        FMain.inputcodigo = inputcodigo.Text
     Endif
+    
+    Me.Close(False)
+    Catch
+        Message.Error(Error.Text)
+
+End
+
+
+Public Sub btncancel_Click()
+
+    Me.Close(True)
 
 End

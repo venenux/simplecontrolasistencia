@@ -3,6 +3,9 @@
 Private horaalescanear As Date
 Private mensageinput As String
 Public datos As DData
+Public fauth As FAuth
+Public inputcodigo As String
+Public inputid As String
 
 
 Public Sub Form_Open()
@@ -126,19 +129,28 @@ End
 '' tomando desde la instancia de datos, el usuario,
 '' y deteniendo la hora para que se muestre cuando se escaneo
 Public Sub btnscanear_Click()
-    ' FAuth.Show
-    ' If FAuth.btnenviar.
+    
+    fauth = New FAuth
+    
     ' inputficha.SetFocus
     If inputficha.Text == mensageinput Or Trim(inputficha.Text) == "" Then
         Message.Info(mensageinput)
         Return
     Else
-        Me.datos.setUsuarioActual(inputficha.Text)
-        horamostrar.Stop
-        Mcaptura.est_app_asis = 1
-        btnscanear.Hide
-        btnscanear.Visible = False
-        Mcaptura.scan_dedo_rostro(Me.datos.getUsuarioActual())
+        If fauth.ShowModal() Or Not inputcodigo Or Not inputid Then 
+            Return
+        Else
+            If inputcodigo == datos.getClaveAdminEnrolado() Then
+                Me.datos.setUsuarioActual(inputficha.Text)
+                horamostrar.Stop
+                Mcaptura.est_app_asis = 1
+                btnscanear.Hide
+                btnscanear.Visible = False
+                Mcaptura.scan_dedo_rostro(Me.datos.getUsuarioActual())
+            Else
+                Message.Error("Clave diaria incorrecta, favor comuniquese con sistemas.")
+            Endif
+        Endif
     Endif
 End
 
