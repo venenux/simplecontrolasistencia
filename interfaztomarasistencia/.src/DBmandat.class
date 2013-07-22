@@ -954,11 +954,19 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
             wtable!minuentrada = minu
             If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
                 Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
-                wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+                If Exist(ruta_data) Then
+                    wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+                Else
+                    wtable!hex_huelladactilar = Null
+                Endif
             Endif
             If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
                 Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
-                wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+                If Exist(ruta_data) Then
+                    wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+                Else
+                    wtable!hex_fotocara = Null
+                Endif
             Endif
             wtable!fec_actualizacion = Date(Now)
             wtable!cod_usuasys = "systemas"
@@ -973,11 +981,19 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
             wtable!minudescanso = minu
             If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
                 Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
-                wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+                If Exist(ruta_data) Then
+                    wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+                Else
+                    wtable!hex_huelladactilar = Null
+                Endif
             Endif
             If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
                 Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
-                wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+                If Exist(ruta_data) Then
+                    wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+                Else
+                    wtable!hex_fotocara = Null
+                Endif
             Endif
             wtable!fec_actualizacion = Date(Now)
             wtable!cod_usuasys = "systemas"
@@ -992,11 +1008,19 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
             wtable!minureincor = minu
             If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
                 Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
-                wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+                If Exist(ruta_data) Then
+                    wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+                Else
+                    wtable!hex_huelladactilar = Null
+                Endif
             Endif
             If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
                 Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
-                wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+                If Exist(ruta_data) Then
+                    wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+                Else
+                    wtable!hex_fotocara = Null
+                Endif
             Endif
             wtable!fec_actualizacion = Date(Now)
             wtable!cod_usuasys = "systemas"
@@ -1011,11 +1035,19 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
             wtable!minusalida = minu
             If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
                 Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
-                wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+                If Exist(ruta_data) Then
+                    wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
+                Else
+                    wtable!hex_huelladactilar = Null
+                Endif
             Endif
             If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
                 Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
-                wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+                If Exist(ruta_data) Then
+                    wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
+                Else
+                    wtable!hex_fotocara = Null
+                Endif
             Endif
             wtable!fec_actualizacion = Date(Now)
             wtable!cod_usuasys = "systemas"

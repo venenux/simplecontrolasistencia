@@ -362,12 +362,12 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
         ' tomamos el tiempo para solo mostrar la fotico unos segundos
         FMain.setHoraAlEscanear
         FMain.tiempotranscurrido_imagenes.Start     ' iniciamos el contador, solo mostrara imagenes por 5 segundos
+        ' verificamos "true" de dactilar, esto sucede sea emulado o no el modo del backend
+        verificado = LineasProcesamiento[3]
         ' cargamos los datos del usuario enrolado
         If itsModoEmulado() == False Then
             ' rescatamos y vemos la ruta de donde esta la data del dedo
             ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
-            ' verificamos "true" de dactilar
-            verificado = LineasProcesamiento[3]
             ' cargamos la fotico del dedo en el GUI interfaz grafica al usuario
             FMain.img_dedo_mostrar.Picture = Picture[ruta_img_huella]
         Endif
@@ -376,9 +376,11 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
         ' operacion exitosa, mostramos la foto pero no permitimos pulsar boton hasta que vea su huella
         FMain.img_dedo_mostrar.Show
         ' tiramos una fotico de la cara que pone el esclavo.. err digo trabajador
-        getCamera().Save(ruta_img_foto)
+        If FMain.datos.itsAndandoCamara() == True Then
+            getCamera().Save(ruta_img_foto)
+            FMain.img_cara_mostrar.Picture = Picture[ruta_img_foto]
+        Endif
         ' cargamos la fotico del rostro en el GUI interfaz grafica al usuario
-        FMain.img_cara_mostrar.Picture = Picture[ruta_img_foto]
         FMain.img_cara_mostrar.Show
         FMain.img_video_mostrar.Visible = False
     Else
