@@ -243,6 +243,58 @@ Public Function sysasis_init_registro()
 End
 
 
+'' inicio de tabla de registros de actividad, puede que exista gente con huellas dactilares piches
+Public Function sysasis_init_marcajes()
+
+    ' - - tabla de registros del horario de trabajo, es usada para enviar a OP y registrar los horarios laborados
+    ' Create TABLE sysasis_init_marcajes(
+    '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+    '   fec_registro Date Not Null, - - fecha del registro que se esta ingresando
+    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad
+    '   hora INTEGER Null, - - hora de marcaje fallida
+    '   minu INTEGER Null, - - minuto de marcaje fallida
+    '   segu INTEGER Null, - - segundo de marcaje fallida
+    '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez NOTA FUNCIONA CON DEFAULT NOW
+    '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
+    '   PRIMARY KEY(cod_ficha, fec_registro, cod_ubicacion),
+    '   - - si el personal es muy movido, tendra registros en distintas ubicaciones,
+    '   - - el ubicacion ayuda a descartar duplicados.esto amerita tener un SP que maneje los datos
+    '   - - la expotacio se realizara en un vista que colocara el calculo de las horas y
+    '   - - estos registros "dispersos"(ejemplo, entro en castellana, su primera salida debe ser de castellana antes de ir a otro lado)
+    '   - - diferencia entre registro no puede ser menor a 1 / 3 hora y mayor a 6 horas CUANDO SEAN SELLOS DISTINTOS
+
+    ' Poruqe dos columnas de fecha? : porque la segunda es por defecto la fecha y hora actual, si alguien manipula, se registra
+    ' lo que significa que si alguien inserta alguna hora de trabajo a mano, se vera la trampa si no ejecuta completo el query
+
+    Dim hTable As Table
+
+    If isConected() == False Then
+        getConeccionDB()
+    Endif
+    
+    If Not hconn.Tables.Exist("sysasis_marcajes") Then
+        hTable = hconn.Tables.Add("sysasis_marcajes")
+        With hTable.Fields
+            .Add("cod_ficha", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+            .Add("fec_registro", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
+            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad es CODSUC/CODGER
+            .Add("num_contador", db.Integer,, 0)      ' contador de fotos, si va a distintos lugares debe marcar salida = 4
+            .Add("hora", db.Integer,, 0)      '
+            .Add("minu", db.Integer,, 0)      '
+            .Add("segu", db.Integer,, 0)      '
+            .Add("hex_huelladactilar", db.Blob,, Null)  ' opcional, huella dactilar del usuario/trabajado ficha, opcional, es HEXFING
+            .Add("hex_fotocara", db.Blob,, Null)  ' foto de la cara del usuario/trabajado ficha, OPCIONAL
+            .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
+            .Add("cod_usuasys", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+        End With
+        hTable.PrimaryKey = ["cod_ficha", "cod_ubicacion", "fec_registro"]
+        hTable.Update
+    Endif
+    closeConnection
+
+End
+
+
 
 '' este proceso, inicia la tabla de lista de trabajadores/usuarios, y la pobla desde un archivo CSV o desde un regiastro por defecto
 '' este proceso obtiene la lista de empleados/usuarios a autenticar, completa (fuerza bruta)
@@ -251,27 +303,27 @@ End
 '' la fecha es el numero, no importando la de la maquina, la ultima fecha sera siempre el numero mayor
 Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp_export_", sincronizar As Boolean = True) As Integer
 
-    Dim namFile As String       ' nombre del archivo CVS que trae la lista actualizada
-    Dim namComp As New Uncompress   ' archivo comprimido
-    Dim hFile As File           ' archivo CSV que se leera con los datos
-    Dim wtable As Result        ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
-    Dim wline As String         ' linea en procesamiento del CSV
-    Dim wdata As String[]       ' linea procesada (columnas) del CSV
+    Dim namFile As String       ' nombre del archivo CVS que trae la lista actualizada sin comprimir
+    Dim namComp As New Uncompress   ' nombre del archivo comprimido que trae la lista en plano
+    Dim hFile As File           ' abstrancion objeto del archivo CSV que se leera con los datos
     Dim hTable As Table         ' tabla de la nomina listado desde esas lineas de procesamiento
+    Dim wtable As Result        ' virtualizacion en tabla del archivo CSV antes de meter en la tabla de BD
+    Dim wline As String         ' linea en curso al procesamiento del CSV cuando este leyendose
+    Dim wdata As String[]       ' linea procesada (columnas) del CSV
     Dim numDate As Integer      ' numero formado por YYYYMMDD este se ira reduciendo hasta encontrar un archivo
     Dim extFile As String       ' extension del archivo dependiendo si esta compreso
     Dim sourcepath As String    ' ruta del archivo, por defecto home y /tmp si primera vez
-    Dim sepa As String          ' separador de campos sea "," o ";"
-    Dim hexfindata As Variant   ' data blob de hexfin despeus de reconvertir desde base64
+    Dim sepa As String          ' separador de campos por defecto ";", puede que sea "," o ";"
 
     Dim tipnom As Integer, codsuc As Integer, codger As Integer, ficha As Integer
     Dim nombres As Integer, apellidos As Integer, estado As Integer, cedula As Integer, cedu As Integer
     Dim hexfing As Integer, fingreso As Integer
 
-    Dim dummycont As Integer, icols As Integer, iline As Integer
-    Dim dummyword As String     ' usado para ir analizando cada celada del archivo csv
-    Dim dummyquer As String     ' usado para efectuar querys
     Dim fileexits As Boolean = False
+    Dim dummycont As Integer, icols As Integer, iline As Integer    ' usados para manejar las lineas y los titulos de nombre de campos
+    Dim dummyword As String     ' usado para ir analizando cada celada del archivo csv, si tiene " o si necesita escaparse
+    Dim dummyquer As String     ' usado para efectuar querys mediante construccion de consulta dinamica segun parametros
+    Dim hexfindata As Variant   ' data blob de hexfin despeus de reconvertir desde base64 que este en el archivo
 
     tipnom = 1          ' columna para lugar/entidad a la que compete dar respuesta
     codsuc = 2          ' columna de info de relacionada a la anterior, nunca viene vacio, por ello de segunda
@@ -285,18 +337,17 @@ Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp
     nombres = 11        ' nombres ambos del trabajador, trae una coma por ende cuidado con el CSV, deberia estar de penultimo
     apellidos = 12      ' apellidos ambos del trabajador, trae una coma por ende cuidado con el CSV, deberia estar de ultimo
     
-    ' preparacion de la coneccion de base de datos
     If isConected() == False Then
-        getConeccionDB()
+        getConeccionDB()            ' preparacion de la coneccion de base de datos, si no hay necesitamos una
     Endif
     
     If arcm Then
-        extFile = ".cryte"
+        extFile = ".cryte"          ' si arcm es True, se indica que el archivo vino compreso
     Else
-        extFile = ".csv"
+        extFile = ".csv"            ' sino es un archivo de texto plano separado por punto y coma
     Endif
 
-    ' inicializacion de la lista matutina, esta lista solo se debe actualizar si hay archivo nuevo.
+    ' inicializacion de la lista matutina, esta lista solo se debe actualizar si hay registros nuevos (cant enrolados <> cant trabj)
     numDate = Val(Format$(Now, "yyyymmdd"))
     sourcepath = User.Home
     namFile = sourcepath &/ nf & numDate & extFile
@@ -315,6 +366,7 @@ Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp
             If numDate = 20121231 Then
                 sourcepath = "/tmp"
                 namFile = sourcepath &/ nf & numDate & extFile
+                ' si ni hay base de datos ni archivo, no hay nada que hacer
                 If itsDBexiste == False Then
                     If Not Exist(namFile) Then
                         Message.Error("No se encontro datos de sincronizacion al dia, consulte a sistemas. \n"
@@ -349,7 +401,7 @@ Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp
         'hay archivos nuevos, hay gente nueva, por ende se borra la tabla y se crea nueva
         hconn.Begin
             If hconn.Tables.Exist("ConsolidadoTemp") Then
-                Print "verificando si la data ya existe en la db desde archivo ... "
+                Print "verificando si necesario sincronizar, si la data ya existe en la db desde archivo ... "
                 hFile = Open namFile For Read
                 dummycont = 0
                 While Not Eof(hFile)

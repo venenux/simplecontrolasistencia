@@ -316,6 +316,7 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
     Dim datos As String[]
     
     Dim verificado As String = ""       ' si esta vacio no se encontro id, false no paso el dactilar, true, puede trabajar
+    Dim textcommon As String = ""       ' usado para algunas economias de codigo por alli, nada importante
 
     Randomize CInteger(Val(Format$(Now, "ddmmyyyyhhnnss")))
     ramdi = Int(Rnd * 100000000)
@@ -366,13 +367,20 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
         verificado = LineasProcesamiento[3]
         ' cargamos los datos del usuario enrolado
         If itsModoEmulado() == False Then
-            ' rescatamos y vemos la ruta de donde esta la data del dedo
-            ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
-            ' cargamos la fotico del dedo en el GUI interfaz grafica al usuario
-            FMain.img_dedo_mostrar.Picture = Picture[ruta_img_huella]
+            ' verificamos ya halla sido enrolado
+            If Val(verificado) > -1 Then
+                ' rescatamos y vemos la ruta de donde esta la data del dedo
+                ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
+                ' cargamos la fotico del dedo en el GUI interfaz grafica al usuario
+                FMain.img_dedo_mostrar.Picture = Picture[ruta_img_huella]
+            Endif
         Endif
         ' informamos de si fue enrolado/verificado correctamente por el backend
-        FMain.datos.setStatusVerificado(LineasProcesamiento[3])
+        If Val(verificado) > -1 Then
+            FMain.datos.setStatusVerificado(LineasProcesamiento[3])
+        Else
+            FMain.datos.setStatusVerificado(True)
+        Endif
         ' operacion exitosa, mostramos la foto pero no permitimos pulsar boton hasta que vea su huella
         FMain.img_dedo_mostrar.Show
         ' tiramos una fotico de la cara que pone el esclavo.. err digo trabajador
@@ -391,16 +399,30 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
 
     ' gestionamos hacia base de datos
     If verificado == "TRUE" Then
-        dbmanagdat = New DBmandat
-        resultado_dbmanat = dbmanagdat.sys_writehistory_user(usuario, datos[2], Format$(Now, "hh"), Format$(Now, "nn"), ruta_img_foto, ruta_data_dactilar, Null)
-        If resultado_dbmanat > 4 Or resultado_dbmanat < 0 Then
-            FMain.mensageusuario.Text = "Sr(a) " & datos[0] & "," & datos[1] & ", Ud ya marco el final de su dia laboral. No se le crearan mas registros de asistencias"
-        Endif
+        textcommon = "Sr(a) " & datos[0] & "," & datos[1]
+            dbmanagdat = New DBmandat
+            resultado_dbmanat = dbmanagdat.sys_writehistory_user(usuario, datos[2], Format$(Now, "hh"), Format$(Now, "nn"), ruta_img_foto, ruta_data_dactilar, Null)
+            If resultado_dbmanat >= 4 Or resultado_dbmanat < 0 Then
+                FMain.mensageusuario.Text = textcommon & ", Ud ya marco el final de su dia laboral. No se le crearan mas registros de asistencias en adelante"
+            Else
+                If resultado_dbmanat == 1 Or resultado_dbmanat == 3 Then
+                    FMain.mensageusuario.Text = textcommon & ", Incorporacion registrada."
+                Endif
+                If resultado_dbmanat == 2 Then
+                    FMain.mensageusuario.Text = textcommon & ", Salida de descanso registrada."
+                Endif
+            Endif
+            If Val(verificado) > -1 And resultado_dbmanat < 0 Then
+                FMain.mensageusuario.Text = "Ud no esta registrado en ninguna instancia de la organizacion u/o empresa."
+            Endif
     Endif
     If verificado == "FALSE" Then
         FMain.mensageusuario.Text = "Verificacion incorrecta: " & datos[1] & ", coloque el CENTRO de la yema del dedo que enrolo, ningun otro, la punta le la UÑA toque/arriba el borde superior. La IMAGEN debe RESULTAR EN UN REMOLINO DE LINEAS."
     Endif
     FMain.mensageusuario.Show
+    If Val(verificado) == -5 Then
+        FMain.mensageusuario.Text = "Ud no ha sido enrolado aun, favor pida sea registrada su huella dactilar a su jefe inmmediato o en sistemas."
+    Endif
     'un print de log alli y listo
     Print "proceso de enrolado termino con resultqado : " & verificado
     ' eliminamos rastro, dado ya tenemos la foto dactilar y el archivo, incluso encriptado
