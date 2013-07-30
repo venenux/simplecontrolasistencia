@@ -93,17 +93,17 @@ Public Function itsDBexiste() As Boolean
 End
 
 '' este, inicia estructura de datos para poder listar las huellas dactilares
-Public Function sysasis_init_listado_id()
+Public Function sysasis_init_listado_id(Optional lugar As String = "tiendas")
 
     ' Create TABLE sysasis_listado_id(
     '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI SINO numero, en VNZ es CI
-    '   fec_registro Date Not Null, - - fecha del registro de dia de su huella dactilar
-    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad, es CODSUC/CODGER
+    '   fec_registro Date Not Null, - - fecha del registro de dia de su huella dactilar, sin hora indica solo el dia
+    '   cod_gerencia VARCHAR(20) Not Null, - - ubicacion(tienda)a la que pertenece, es CODGER por ejemplo
     '   hex_huelladactilar BLOB Not Null, - - huella dactilar tomada, es HEXFING
     '   hex_fotocara BLOB Not Null, - -foto de la cara es OPCIONAL y no necesario
     '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez
     '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
-    '   PRIMARY KEY(cod_ficha, fec_registro, cod_ubicacion, hex_huelladactilar),
+    '   PRIMARY KEY(cod_ficha, fec_registro, cod_gerencia, hex_huelladactilar),
 
     ' Tabla de la ficha de registro de sysasis_listado_id
 
@@ -119,14 +119,15 @@ Public Function sysasis_init_listado_id()
         With hTable.Fields
             '.Add("id", db.Serial) ' para unicidad
             .Add("cod_ficha", db.String, 20)   ' FICHA/Cedu,  el id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
-            .Add("fec_registro", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
-            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad, es CODSUC/CODGER
+            .Add("cod_lugar", db.String, 20, lugar)   ' nombre de ubicacion(tienda o sobrenombre) en al que labora/trabaja o se enrolo
+            .Add("fec_registro", db.String,, Val(Format$(Now, "mmddhh")))   ' fecha del registro de dia de su huella dactilar, sin hora indica solo el dia
+            .Add("cod_gerencia", db.String, 20)   ' ubicacion(tienda)a la que pertenece, es CODGER por ejemplo
             .Add("hex_huelladactilar", db.Blob,, Null)  ' huella dactilar del usuario/trabajado ficha, es HEXFING
             .Add("hex_fotocara", db.Blob,, Null)  ' fot de la cara del usuario/trabajado ficha, OPCIONAL
             .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
             .Add("cod_usuasys", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
         End With
-        hTable.PrimaryKey = ["cod_ficha", "fec_registro", "cod_ubicacion"] ' no es necesario , es solo lectura
+        hTable.PrimaryKey = ["cod_ficha", "fec_registro", "cod_gerencia"] ' no es necesario , es solo lectura
         hTable.Update
     Endif
     Else
@@ -139,17 +140,18 @@ End
 
 '' proceso de inicializacion de DB, tabla de enrolamiento, si no existe en la DB una tabla de enrolamiento, se crea.
 '' este, inicia estructura de datos para poder enrolar nuevas huellas dactilares
-Public Function sysasis_init_enrolar_id()
+Public Function sysasis_init_enrolar_id(Optional lugar As String = "tiendas")
 
     ' Create TABLE sysasis_enrolar_id(
     '   cod_ficha VARCHAR(20) Not Null, - - FICHA/Cedu, el id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
-    '   fec_registro Date Not Null, - - fecha del registro de dia de su huella dactilar
-    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad, es CODSUC/CODGER
+    '   cod_lugar VARCHAR(20) Not Null, - - nombre de ubicacion(tienda o sobrenombre) en la que labora
+    '   fec_registro Date Not Null, - - fecha del registro de dia de su huella dactilar, sin hora indica solo el dia
+    '   cod_gerencia VARCHAR(20) Not Null, - - ubicacion(tienda)a la que pertenece, es CODGER por ejemplo
     '   hex_huelladactilar BLOB Not Null, - - huella dactilar tomada es HEXFING
     '   hex_fotocara BLOB Not Null, - -foto de la cara es OPCIONAL y no necesario
     '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez
     '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
-    '   PRIMARY KEY(cod_ficha, fec_registro, cod_ubicacion, hex_huelladactilar),
+    '   PRIMARY KEY(cod_ficha, fec_registro, cod_gerencia, hex_huelladactilar),
 
     ' Tabla de la ficha de registro de sysasis_enrolar_id
 
@@ -163,14 +165,15 @@ Public Function sysasis_init_enrolar_id()
         hTable = hconn.Tables.Add("sysasis_enrolar_id")
         With hTable.Fields
             .Add("cod_ficha", db.String, 20)   ' FICHA/Cedu, el id del trabajador en VNZ es numero de la CI
-            .Add("fec_registro", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
-            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad, es CODSUC/CODGER
+            .Add("cod_lugar", db.String, 20, lugar)   ' nombre de ubicacion(tienda o sobrenombre) en al que labora/trabaja o se enrolo
+            .Add("fec_registro", db.Date,, Val(Format$(Now, "mmddhh")))   ' fecha del registro de dia de su huella dactilar, sin hora, indica solo el dia
+            .Add("cod_gerencia", db.String, 20)   ' ubicacion(tienda)a la que pertenece, es CODGER por ejemplo
             .Add("hex_huelladactilar", db.Blob,, Null)  ' huella dactilar del usuario/trabajado ficha, HEXFING
             .Add("hex_fotocara", db.Blob,, Null)  ' foto de la cara del usuario/trabajado ficha, OPCIONAL
             .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
             .Add("cod_usuasys", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
         End With
-        hTable.PrimaryKey = ["cod_ficha", "cod_ubicacion", "fec_registro"]
+        hTable.PrimaryKey = ["cod_ficha", "cod_lugar", "cod_gerencia", "fec_registro"]
         hTable.Update
     Endif
     closeConnection
@@ -179,13 +182,14 @@ End
 
 
 '' inicializacion de registros en la DB, si no existe en DB la tabla de registros la crea
-Public Function sysasis_init_registro()
+Public Function sysasis_init_registro(Optional lugar As String = "tiendas")
 
     ' - - tabla de registros del horario de trabajo, es usada para enviar a OP y registrar los horarios laborados
     ' Create TABLE sysasis_registro(
     '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
-    '   fec_registro Date Not Null, - - fecha del registro de dia a laborar
-    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad
+    '   cod_lugar VARCHAR(20) Not Null, - - nombre de ubicacion(tienda o sobrenombre) en la que labora
+    '   fec_registro Date Not Null, - - fecha del registro de dia a laborar sin hora, indica solo el dia
+    '   cod_gerencia VARCHAR(20) Not Null, - - ubicacion(tienda)a la que pertenece
     '   num_contador INTEGER Not Null Default 0, - - contador de fotos, si va a distintos lugares debe marcar salida
     '   horaentrada INTEGER Null, - - hora de entrada del dia
     '   minuentrada INTEGER Null, - - minuto de entrada en dicha hora
@@ -199,7 +203,7 @@ Public Function sysasis_init_registro()
     '   hex_fotocara BLOB Not Null, - - opcional, foto de la cara es OPCIONAL y no necesario
     '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez NOTA FUNCIONA CON DEFAULT NOW
     '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
-    '   PRIMARY KEY(cod_ficha, fec_registro, cod_ubicacion),
+    '   PRIMARY KEY(cod_ficha, fec_registro, cod_gerencia),
     '   - - si el personal es muy movido, tendra registros en distintas ubicaciones,
     '   - - el ubicacion ayuda a descartar duplicados.esto amerita tener un SP que maneje los datos
     '   - - la expotacio se realizara en un vista que colocara el calculo de las horas y
@@ -219,8 +223,9 @@ Public Function sysasis_init_registro()
         hTable = hconn.Tables.Add("sysasis_registro")
         With hTable.Fields
             .Add("cod_ficha", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
-            .Add("fec_registro", db.String,, "2013-07-16 09:00:00.000")   ' fecha del registro de dia de su huella dactilar
-            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad es CODSUC/CODGER
+            .Add("cod_lugar", db.String, 20, lugar)   ' nombre de ubicacion(tienda o sobrenombre) en al que labora/trabaja o se enrolo
+            .Add("fec_registro", db.String,, Val(Format$(Now, "mmddhh")))   ' fecha del registro de dia de su huella dactilar
+            .Add("cod_gerencia", db.String, 20)   ' ubicacion(tienda)a la que pertenece es CODGER por ejemplo
             .Add("num_contador", db.Integer,, 0)      ' contador de fotos, si va a distintos lugares debe marcar salida = 4
             .Add("horaentrada", db.Integer,, 0)      '
             .Add("minuentrada", db.Integer,, 0)      '
@@ -235,7 +240,7 @@ Public Function sysasis_init_registro()
             .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
             .Add("cod_usuasys", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
         End With
-        hTable.PrimaryKey = ["cod_ficha", "cod_ubicacion", "fec_registro"]
+        hTable.PrimaryKey = ["cod_ficha", "cod_lugar", "cod_gerencia", "fec_registro"]
         hTable.Update
     Endif
     closeConnection
@@ -244,19 +249,19 @@ End
 
 
 '' inicio de tabla de registros de actividad, puede que exista gente con huellas dactilares piches
-Public Function sysasis_init_marcajes()
+Public Function sysasis_init_marcajes(Optional lugar As String = "tiendas")
 
     ' - - tabla de registros del horario de trabajo, es usada para enviar a OP y registrar los horarios laborados
     ' Create TABLE sysasis_init_marcajes(
     '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
     '   fec_registro Date Not Null, - - fecha del registro que se esta ingresando
-    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad
+    '   cod_gerencia VARCHAR(20) Not Null, - - ubicacion(tienda)a la que pertenece
     '   hora INTEGER Null, - - hora de marcaje fallida
     '   minu INTEGER Null, - - minuto de marcaje fallida
     '   segu INTEGER Null, - - segundo de marcaje fallida
     '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez NOTA FUNCIONA CON DEFAULT NOW
     '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
-    '   PRIMARY KEY(cod_ficha, fec_registro, cod_ubicacion),
+    '   PRIMARY KEY(cod_ficha, fec_registro, cod_gerencia),
     '   - - si el personal es muy movido, tendra registros en distintas ubicaciones,
     '   - - el ubicacion ayuda a descartar duplicados.esto amerita tener un SP que maneje los datos
     '   - - la expotacio se realizara en un vista que colocara el calculo de las horas y
@@ -276,8 +281,9 @@ Public Function sysasis_init_marcajes()
         hTable = hconn.Tables.Add("sysasis_marcajes")
         With hTable.Fields
             .Add("cod_ficha", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
-            .Add("fec_registro", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
-            .Add("cod_ubicacion", db.String, 20)   ' ubicacion(tienda)de su ultima actividad es CODSUC/CODGER
+            .Add("cod_lugar", db.String, 20, lugar)   ' nombre de ubicacion(tienda o sobrenombre) en al que labora/trabaja o se enrolo
+            .Add("fec_registro", db.String,, Val(Format$(Now, "mmddhh")))   ' fecha del registro de dia de su huella dactilar
+            .Add("cod_gerencia", db.String, 20)   ' ubicacion(tienda)a la que pertenece es CODGER por ejemplo
             .Add("num_contador", db.Integer,, 0)      ' contador de fotos, si va a distintos lugares debe marcar salida = 4
             .Add("hora", db.Integer,, 0)      '
             .Add("minu", db.Integer,, 0)      '
@@ -287,7 +293,7 @@ Public Function sysasis_init_marcajes()
             .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
             .Add("cod_usuasys", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
         End With
-        hTable.PrimaryKey = ["cod_ficha", "cod_ubicacion", "fec_registro"]
+        hTable.PrimaryKey = ["cod_ficha", "cod_gerencia", "fec_registro"]
         hTable.Update
     Endif
     closeConnection
@@ -301,7 +307,7 @@ End
 '' retrae el fichero compreso/encriptado, detecta nombres de campos e inserta los registros
 '' una vez realizado esto borra el fichero desencriptado, los archivos son movidos por fecha
 '' la fecha es el numero, no importando la de la maquina, la ultima fecha sera siempre el numero mayor
-Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp_export_", sincronizar As Boolean = True) As Integer
+Public Sub syncronizar(arcm As Boolean, Optional lugar As String = "tienda", Optional nf As String = "consolidadotemp_export_", sincronizar As Boolean = True) As Integer
 
     Dim namFile As String       ' nombre del archivo CVS que trae la lista actualizada sin comprimir
     Dim namComp As New Uncompress   ' nombre del archivo comprimido que trae la lista en plano
@@ -540,25 +546,27 @@ Public Sub syncronizar(arcm As Boolean, Optional nf As String = "consolidadotemp
     
     RellenarListado:
     
-    sysasis_init_listado_id     ' inicio la tabla de listado filtrado
-    sysasis_init_enrolar_id     ' inicio la tabla de enrolado nuevo
-    sysasis_init_registro       ' inicio la tabla de registros del dia
+    sysasis_init_listado_id(lugar)     ' inicio la tabla de listado filtrado
+    sysasis_init_enrolar_id(lugar)     ' inicio la tabla de enrolado nuevo
+    sysasis_init_registro(lugar)       ' inicio la tabla de registros del dia
     
-    dummyquer = "INSERT" 
-    dummyquer = dummyquer & " INTO sysasis_listado_id(cod_ficha, fec_registro, cod_ubicacion, hex_huelladactilar)" 
-    dummyquer = dummyquer & " Select ficha, fec_actualizacion, codsuc, HEXFING From ConsolidadoTemp "
-    dummyquer = dummyquer & "WHERE ConsolidadoTemp.ESTADO Like '_ctivo'"
-    
-    ' pasar la data con los dedos a la tabla de listado para no usar los datos basura si existiera alguno
-    hconn.Begin
-    hconn.Exec("DELETE FROM sysasis_listado_id ")
-    hconn.Commit
-    hconn.Begin
-    hconn.Exec(dummyquer)
-    hconn.Commit
-    ' TODO si modo directo activado, no borar datos de tabla de enrolado, sino insertarlos en el listado
-    'sys_enroll_user("999999999", True, Null, Null, Null, "Nombre", "Apellido")
-    ' TODO OJO si desactivado modo directo listar y borrar dichos ingresados que aun esten en esta tabla
+    If sincronizar == True Then
+        dummyquer = "INSERT" 
+        dummyquer = dummyquer & " INTO sysasis_listado_id(cod_ficha, cod_lugar, fec_registro, cod_gerencia, hex_huelladactilar)" 
+        dummyquer = dummyquer & " Select ficha, codger, fec_actualizacion, codsuc, HEXFING From ConsolidadoTemp "
+        dummyquer = dummyquer & "WHERE ConsolidadoTemp.ESTADO Like '_ctivo'"
+        
+        ' pasar la data con los dedos a la tabla de listado para no usar los datos basura si existiera alguno
+        hconn.Begin
+        hconn.Exec("DELETE FROM sysasis_listado_id ")
+        hconn.Commit
+        hconn.Begin
+        hconn.Exec(dummyquer)
+        hconn.Commit
+        ' TODO si modo directo activado, no borar datos de tabla de enrolado, sino insertarlos en el listado
+        'sys_enroll_user("999999999", True, Null, Null, Null, "Nombre", "Apellido")
+        ' TODO OJO si desactivado modo directo listar y borrar dichos ingresados que aun esten en esta tabla
+    Endif
     closeConnection
     Print "Base de datos sincronizada y preparada, lista para usar."
     Return 0
@@ -581,7 +589,7 @@ End
 '' procedimiento de reclutamiento de nuevos esclav.. errr nuevos trabjadores a la lista
 '' requiere el id (ficha/cedula/identificador) del usuario o trabajador, 
 '' opcionalmente se le pasa la data del dedo, en ultimo caso las fotos de la cara y el dedo que no son importantes si la primera esta
-Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = False, Optional ruta_data As String = "", data As Variant = Null, imag_cara As Picture = Null, imag_dedo As Picture = Null, nameid As String, apelid As String) As Integer
+Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = False, Optional ruta_data As String = "", data As Variant = Null, imag_cara As String = Null, imag_dedo As Picture = Null, nameid As String, apelid As String) As Integer
     
     Dim wtable As Result        ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
     Dim dummyquer As String     ' query para ingresar el usuario en la lista de enrolado
@@ -661,7 +669,7 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
     wtable = hconn.Create("sysasis_enrolar_id")
     wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
     wtable!fec_registro = Date(Now) ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo"
-    wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
+    wtable!cod_gerencia = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
     If Comp(ruta_data, "", gb.IgnoreCase) == 0 Then
         wtable!hex_huelladactilar = data ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
     Else
@@ -718,7 +726,7 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
             wtable = hconn.Create("sysasis_listado_id")
             wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
             wtable!fec_registro = Date(Now) ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo"
-            wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
+            wtable!cod_gerencia = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
             If Comp(ruta_data, "", gb.IgnoreCase) == 0 Then
                 wtable!hex_huelladactilar = data ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
             Else
@@ -906,7 +914,7 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
     '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
     '   cod_cedula VARCHAR(20) Not Null, - - cedula con nacionalidad y guin del trabajador, solo VNZ
     '   fec_registro Date Not Null, - - fecha del registro de dia a laborar
-    '   cod_ubicacion VARCHAR(20) Not Null, - - ubicacion(tienda)de su ultima actividad
+    '   cod_gerencia VARCHAR(20) Not Null, - - ubicacion(tienda)a la que pertenece
     '   num_contador INTEGER Not Null Default 0, - - contador de fotos, si va a distintos lugares debe marcar salida
     '   horaentrada INTEGER Null, - - hora de entrada del dia
     '   minuentrada INTEGER Null, - - minuto de entrada en dicha hora
@@ -969,7 +977,7 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
     dummyquer = dummyquer & " horareincor, minureincor, "
     dummyquer = dummyquer & " horasalida, minusalida "
     dummyquer = dummyquer & " from sysasis_registro "
-    dummyquer = dummyquer & " where cod_ficha = '" & id & "' and cod_ubicacion = '" & codubi & "' "
+    dummyquer = dummyquer & " where cod_ficha = '" & id & "' and cod_gerencia = '" & codubi & "' "
     ' estos querys son ambiguos, dado el usuario si tiene distintos codigos de ubicacion tendra distintos registros, asi que habra que unificarlos o usar codigos de ubicacion distintos
     Print dummyquer
     hres = hconn.Exec(dummyquer) ' resultado = con.Exec("select \"Ficha\" from empleados_activos where \"Ficha\"='" & CStr(TextBox1.Text) & "' and \"Estado\"='Activo'")
@@ -1000,7 +1008,7 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
             wtable = hconn.Create("sysasis_registro")
             wtable!cod_ficha = id
             wtable!fec_registro = Format$(Now, "yyyy-mm-dd hh:00:00.000") ' "2013-07-16 14:11:21.722"
-            wtable!cod_ubicacion = codubi
+            wtable!cod_gerencia = codubi
             wtable!num_contador = entradas
             wtable!horaentrada = hora
             wtable!minuentrada = minu
@@ -1012,8 +1020,8 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
                     wtable!hex_huelladactilar = Null
                 Endif
             Endif
-            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
-                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+            If Comp(ruta_foto, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_foto & " directamente en vez de transporte bean."
                 If Exist(ruta_data) Then
                     wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
                 Else
@@ -1024,10 +1032,10 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
             wtable!cod_usuasys = "systemas"
             wtable.Update
         Case 2
-            wtable = hconn.Edit("sysasis_registro", "cod_ficha = &1 and cod_ubicacion = &2 ", id, codubi)
+            wtable = hconn.Edit("sysasis_registro", "cod_ficha = &1 and cod_gerencia = &2 ", id, codubi)
             wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
             wtable!fec_registro = Format$(Now, "yyyy-mm-dd hh:00:00.000") ' "2013-07-16 14:11:21.722"
-            wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
+            wtable!cod_gerencia = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
             wtable!num_contador = entradas
             wtable!horadescanso = hora
             wtable!minudescanso = minu
@@ -1039,8 +1047,8 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
                     wtable!hex_huelladactilar = Null
                 Endif
             Endif
-            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
-                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+            If Comp(ruta_foto, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_foto & " directamente en vez de transporte bean."
                 If Exist(ruta_data) Then
                     wtable!hex_fotocara = File.Load(ruta_foto) ' HEXFING64 -- opcional, foto de la cara es OPCIONAL y no necesario
                 Else
@@ -1051,15 +1059,15 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
             wtable!cod_usuasys = "systemas"
             wtable.Update
         Case 3
-            wtable = hconn.Edit("sysasis_registro", "cod_ficha = &1 and cod_ubicacion = &2 ", id, codubi)
+            wtable = hconn.Edit("sysasis_registro", "cod_ficha = &1 and cod_gerencia = &2 ", id, codubi)
             wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
             wtable!fec_registro = Format$(Now, "yyyy-mm-dd hh:00:00.000") ' "2013-07-16 14:11:21.722"
-            wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
+            wtable!cod_gerencia = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
             wtable!num_contador = entradas
             wtable!horareincor = hora
             wtable!minureincor = minu
-            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
-                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+            If Comp(ruta_foto, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_foto & " directamente en vez de transporte bean."
                 If Exist(ruta_data) Then
                     wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
                 Else
@@ -1078,15 +1086,15 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
             wtable!cod_usuasys = "systemas"
             wtable.Update
         Case 4
-            wtable = hconn.Edit("sysasis_registro", "cod_ficha = &1 and cod_ubicacion = &2 ", id, codubi)
+            wtable = hconn.Edit("sysasis_registro", "cod_ficha = &1 and cod_gerencia = &2 ", id, codubi)
             wtable!cod_ficha = id ' TIPNOM VARCHAR(60) Default Null, - - PK necesaria, dado no hay un trab en varias nominas"
             wtable!fec_registro = Format$(Now, "yyyy-mm-dd hh:00:00.000") ' "2013-07-16 14:11:21.722"
-            wtable!cod_ubicacion = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
+            wtable!cod_gerencia = codubi ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar"
             wtable!num_contador = entradas
             wtable!horasalida = hora
             wtable!minusalida = minu
-            If Comp(ruta_data, "", gb.IgnoreCase) <> 0 Then
-                Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
+            If Comp(ruta_foto, "", gb.IgnoreCase) <> 0 Then
+                Print "Cargando data desde archivo " & ruta_foto & " directamente en vez de transporte bean."
                 If Exist(ruta_data) Then
                     wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
                 Else

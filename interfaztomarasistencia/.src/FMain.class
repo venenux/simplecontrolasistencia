@@ -18,7 +18,7 @@ Public Sub Form_Open()
     Me.datos = New DData
     Me.datos = Mset.prepararporconfiguracion()  ' leer la configuracion, que camara, que modo, que db, etc
     tiempodiario = Val(Format$(Now, "mmddhh"))
-    numeroubica = Val(Me.datos.getUbicacionUsuario())
+    numeroubica = Val(Me.datos.getUbicacionGer())
     Print "Sistema de Asistencia: Interfaz arrancada con tiempo dinamico en: " & tiempodiario & " " & numeroubica
     clave = numeroubica * tiempodiario
     Me.datos.setClaveAdminEnrolado(clave)    ' confogura la clave de administracion y enrolado
@@ -51,7 +51,7 @@ Public Sub iniciarInterfaz()
     
     If dbmanagdat.isConected() == True Then
         Me.datos.setDbLocalLista(True)
-        estatus = dbmanagdat.syncronizar(Me.datos.itsListaCompresa(), Me.datos.getArchivoConsolidado())  ' syncronizar crea todas las tablas necesarias, poblando todo, listado, enrolado y registros
+        estatus = dbmanagdat.syncronizar(Me.datos.itsListaCompresa(), Me.datos.getUbicacion(), Me.datos.getArchivoConsolidado())  ' syncronizar crea todas las tablas necesarias, poblando todo, listado, enrolado y registros
         If estatus == -1 Then
             dbmanagdat.closeConnection
             Quit                        ' si iniciando el listado no se encuentra ningun archivo, la aplicacion sale

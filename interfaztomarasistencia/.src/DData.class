@@ -70,14 +70,28 @@ End
 Private ubicacionusuario As String
 '' asigna la ubicacion del usuario para manejar
 
-Public Sub setUbicacionUsuario(usuario As String)
+Public Sub setUbicacionGer(usuario As String)
     ubicacionusuario = usuario
 End
 '' obtiene la ubicacion del usuario para manejar
 
-Public Sub getUbicacionUsuario() As String
+Public Sub getUbicacionGer() As String
     Return ubicacionusuario
 End
+
+
+'' ubicacion de esta maquina, instancia, comunmente sobrenombre de la tienda u/o oficina
+Private ubicacion As String
+'' 
+Public Sub setUbicacion(ubica As String)
+    ubicacion = ubica
+End
+'' obtiene al clave dinamica diaria de enrolado y administracion
+Public Sub getUbicacion() As String
+    Return ubicacion
+End
+
+
 
 '' ruta de los datos de fprint (segun dispositivo) del proceso actual
 Private rutafprintdaya As String

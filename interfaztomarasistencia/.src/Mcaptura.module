@@ -279,7 +279,7 @@ Public Sub scan_dedo_rostro(usuario As String, Optional dedo As Integer = 1, Opt
     ' gestionamos hacia base de datos
     dbmanagdat = New DBmandat
     dbmanagdat.getConeccionDB()
-    resultado_dbmanat = dbmanagdat.sys_enroll_user(usuario, FMain.datos.itsModoDirecto(), ruta_data_dactilar, FMain.datos.getDataBlob(), Null, Null, "COLOCAR_NOMBRE", "COLOCAR_APELLIDO")
+    resultado_dbmanat = dbmanagdat.sys_enroll_user(usuario, FMain.datos.itsModoDirecto(), ruta_data_dactilar, FMain.datos.getDataBlob(), ruta_img_foto, Null, "COLOCAR_NOMBRE", "COLOCAR_APELLIDO")
     Print "proceso de enrolado termino con resultqado : " & resultado_dbmanat
     ' eliminamos rastro, dado ya tenemos la foto dactilar y el archivo, incluso encriptado
     Kill ruta_img_foto
@@ -401,8 +401,8 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
     If verificado == "TRUE" Then
         textcommon = "Sr(a) " & datos[0] & "," & datos[1]
             dbmanagdat = New DBmandat
-            resultado_dbmanat = dbmanagdat.sys_writehistory_user(usuario, datos[2], Format$(Now, "hh"), Format$(Now, "nn"), ruta_img_foto, ruta_data_dactilar, Null)
-            If resultado_dbmanat >= 4 Or resultado_dbmanat < 0 Then
+            resultado_dbmanat = dbmanagdat.sys_writehistory_user(usuario, datos[2], Format$(Now, "hh"), Format$(Now, "nn"), ruta_img_foto, ruta_data_dactilar, ruta_img_foto)
+            If resultado_dbmanat > 4 Or resultado_dbmanat < 0 Then
                 FMain.mensageusuario.Text = textcommon & ", Ud ya marco el final de su dia laboral. No se le crearan mas registros de asistencias en adelante"
             Else
                 If resultado_dbmanat == 1 Or resultado_dbmanat == 3 Then
@@ -410,6 +410,9 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
                 Endif
                 If resultado_dbmanat == 2 Then
                     FMain.mensageusuario.Text = textcommon & ", Salida de descanso registrada."
+                Endif
+                If resultado_dbmanat == 4 Then
+                    FMain.mensageusuario.Text = textcommon & ", Salida laboral final registrada."
                 Endif
             Endif
             If Val(verificado) > -1 And resultado_dbmanat < 0 Then
