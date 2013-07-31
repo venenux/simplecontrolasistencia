@@ -1,6 +1,5 @@
-<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
-
-class Indexcontroler extends CI_Controller {
+<?php
+class reportes_general extends CI_Controller {
 
 	function __construct()
 	{
@@ -30,12 +29,10 @@ class Indexcontroler extends CI_Controller {
 	public function index()
 	{
 		$data['menu'] = $this->menu->general_menu();
+		$data['contlrname'] = 'reportes_general';
+		$data['titlepage'] = 'Menu de Reportes';
 		$this->load->view('header.php',$data);
-		$this->load->view('inicion.php',$data);
 		$this->load->view('vista_general.php',$data);
 		$this->load->view('footer.php',$data);
 	}
 }
-
-/* End of file welcome.php */
-/* Location: ./application/controllers/welcome.php */
