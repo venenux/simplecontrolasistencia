@@ -9,14 +9,21 @@ indent_mode=3
 
 [project]
 name=asistenciaauditor
-base_path=/home/intranet/devel/sistemasasistenciasvn/trunk/auditorweb/asistenciaauditor
+base_path=/home/systemas/devel/simplecontrolasistencia/servicioasistencia/servicioweb
+description=
 
 [long line marker]
 long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=0
+current_page=5
+FILE_NAME_0=665;PHP;0;16;1;1;0;/home/systemas/devel/simplecontrolasistencia/servicioasistencia/servicioweb/appweb/controllers/indexcontroler.php;0
+FILE_NAME_1=6739;SQL;0;16;1;1;0;/home/systemas/devel/simplecontrolasistencia/servicioasistencia/servicioweb/reporte.sql;0
+FILE_NAME_2=5504;SQL;0;16;1;1;0;/home/systemas/sysasis_calculohoras_ficha_x_lugar.sql;0
+FILE_NAME_3=550;SQL;0;16;1;1;0;/home/systemas/sysasis_calculohoras_ficha_x_dia.sql;0
+FILE_NAME_4=0;SQL;0;16;1;1;0;/home/systemas/sysasis_resumenasistencia_ficha_x_dia.sql;0
+FILE_NAME_5=618;SQL;0;16;1;1;0;/home/systemas/sysasis_reporteasistencia_lugar_x_dia.sql;0
 
 [VTE]
-last_dir=/home/intranet/devel/sistemasasistenciasvn/trunk/auditorweb/asistenciaauditor
+last_dir=/home/systemas/devel/simplecontrolasistencia/servicioasistencia/servicioweb
