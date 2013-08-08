@@ -2,6 +2,9 @@
 
 Public Sub prepararporconfiguracion() As DData
     
+    Dim ubino As Integer = 0, codgno As Integer = 0, camno As Integer = 0
+    Dim messageinfo As String = ""
+    
     Dim configuracion As Settings 
     
     Dim datos As New DData
@@ -14,15 +17,8 @@ Public Sub prepararporconfiguracion() As DData
     ' en cualquier caso, esto solo es en desarrollo, en produccion, creara un archivo nuevo vacio
     configuracion = New Settings(user.Home & "/.asistenciatomar.conf")
     
-    If IsNull(configuracion["localidad/ubicacion", Null]) Then
-        Message.Info("ubicacion no encontrada en el archivo de configuracion DEBE USAR UNA, comuniquese con sistemas")
-        datos.setUbicacionUsuario("999")
-    Else 
-        datos.setUbicacionUsuario(configuracion["localidad/ubicacion"])
-    Endif 
-    
     If IsNull(configuracion["dispositivo/camara", Null]) Then
-        Message.Info("Dispositivo de video no definido en el archivo de configuracion")
+        camno = 1
         datos.setCamaraDev("/dev/video0")
     Else
         datos.setCamaraDev(configuracion["dispositivo/camara"])
@@ -77,6 +73,33 @@ Public Sub prepararporconfiguracion() As DData
         datos.setModoVerificado(configuracion["modalidad/verificado"])
     End If  
     
+    If IsNull(configuracion["localidad/ubicacion", Null]) Then
+        ubino = 1
+        datos.setUbicacion("tienda")
+    Else 
+        datos.setUbicacion(configuracion["localidad/ubicacion"])
+    Endif 
+    
+    If IsNull(configuracion["localidad/codger", Null]) Then
+        codgno = 1
+        datos.setUbicacionGer("999")
+    Else 
+        datos.setUbicacionGer(configuracion["localidad/codger"])
+    Endif 
+    
+    If codgno == 1 Or camno == 1 Or ubino == 1 Then
+        messageinfo = "Se encontraron los sigueintes problemas en el archivo de configuracion:"
+        If camno == 1 Then
+            messageinfo = messageinfo & "\n* Camara no esta definida en el archivo de configuracion"
+        Endif
+        If ubino == 1 Then
+            messageinfo = messageinfo & "\n* Ubicacion no definida en el archivo de configuracion"
+        Endif
+        If codgno == 1 Then
+            messageinfo = messageinfo & "\n* Codigo de ubicacion no definida en el archivo de configuracion"
+        Endif
+        Message.Info(messageinfo)
+    Endif
     
 '     #enrolado can be "directo" Or "activacion"
 ' enrolado = "directo"

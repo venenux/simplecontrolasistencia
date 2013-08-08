@@ -1,0 +1,195 @@
+
+/* ----------------------------------------------- */
+/* - begin clases para html's mas usados, cabeceras */
+/* ------------------------------------------------ */
+h1{ font-family:Verdana, Arial, Helvetica, sans-serif; font-size:30px; }
+h2{ font-family:Verdana, Arial, Helvetica, sans-serif; font-size:22px; }
+h3{ font-family:Verdana, Arial, Helvetica, sans-serif; font-size:18px; }
+p{ font-family:Georgia, "Times New Roman", Times, serif; font-size:10px; }
+fieldset.errors{ color: red; border: 2px solid red; }
+fieldset.exitos{ color: blue; border: 2px solid blue; }
+/* ----------------------------------------------- */
+/* - fin clases para html's mas usados, cabeceras */
+/* ------------------------------------------------ */
+
+
+/* ----------------------------------------------- */
+/* - clases para contenedores e formularios - */
+/* ------------------------------------------------ */
+.input { border: 4px solid #B3B4BD;}
+.text { border: 4px solid #B3B4BD;}
+.textarea { border: 4px solid #B3B4BD;}
+.select { border: 4px solid #B3B4BD;}
+.checkbox { border: 4px solid #B3B4BD;}
+.option { border: 4px solid #B3B4BD;}
+/* ----------------------------------------------- */
+/* - fin clases para contenedores e formularios - */
+/* ------------------------------------------------ */
+
+
+/* ----------------------------------------------- */
+/* - begin - class menu css from piccoro's library */
+/* ----------------------------------------------- */
+.menu 				{ margin: 0px; font-size: medium; width: 100%; float: none; }
+table.menutable		{ color: blue; border: 1px solid green; }
+.menunodes 			{ -webkit-border-radius: 6px; -moz-border-radius: 6px; border-radius: 6px; }
+.menutable 			{ -webkit-border-radius: 6px; -moz-border-radius: 6px; border-radius: 6px; }
+.menuheaders 		{ text-decoration:none; border: 0px solid; }
+.menuheaders:hover ul.menunodes{ z-index:1000; display:block; border: 1px solid green; }
+.menubackground		{ background: #F0F0F0 url(../media/tabbg.gif) 0 0 repeat-x;}
+.menutable a		{ text-decoration:none; border: 0px solid; }
+.menutable a:hover	{ border: 1px solid; }
+.menunodes a 		{ color: black; text-decoration: none }
+.menunodes a:hover	{ color: blue; border: 1px solid; }
+.menuheaders a:hover{ color: blue; border: 1px solid; }
+.menunodes	{
+	position:absolute;
+	list-style-image:none;
+	list-style-type:none;
+	display:none;
+	padding-top:1px;
+	border-bottom:1px;
+	margin-top:01px;
+	margin-bottom:0px;
+	margin-left:-03px;
+	padding-top:3px;
+	padding-bottom:3px;
+	padding-left:02px;
+	padding-right:03px;
+	color: blue;
+	-webkit-border-radius: 6px;
+		-moz-border-radius: 6px;
+			border-radius: 6px;
+} /*IMPORTANT: la clase para "a" ya tiene bordes redondeados, por ende no los pongo en hover */
+/* ----------------------------------------------- */
+/* - end - class menu css from piccoro's library */
+/* ----------------------------------------------- */
+
+
+/* ----------------------------------------------- */
+/* - clase special for any element that must be round - */
+/* ------------------------------------------------ */
+.rounded {
+	display: inline-block;
+	*display: inline;
+	padding: 2px 10px 2px;
+	margin-bottom: 0;
+	margin-top: 0;
+	*margin-left: .3em;
+	line-height: 18px;
+	*line-height: 20px;
+	text-align: center;
+	text-shadow: 0 1px 1px rgba(255, 255, 255, 0.75);
+	vertical-align: middle;
+	cursor: pointer;
+	background-color: #f5f5f5;
+	*background-color: #e6e6e6;
+	background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#e6e6e6));
+	background-image: -webkit-linear-gradient(top, #ffffff, #e6e6e6);
+	background-image: -o-linear-gradient(top, #ffffff, #e6e6e6);
+	background-image: linear-gradient(top, #ffffff, #e6e6e6);
+	background-image: -moz-linear-gradient(top, #ffffff, #e6e6e6);
+	background-repeat: repeat-x;
+	border: 1px solid #cccccc;
+	*border: 0;
+	border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
+	border-color: #e6e6e6 #e6e6e6 #bfbfbf;
+	border-bottom-color: #b3b3b3;
+		-webkit-border-radius: 4px;
+		-moz-border-radius: 4px;
+		border-radius: 4px;
+		filter: progid:dximagetransform.microsoft.gradient(startColorstr='#ffffff', endColorstr='#e6e6e6', GradientType=0);
+		filter: progid:dximagetransform.microsoft.gradient(enabled=false);
+		*zoom: 1;
+		-webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
+		-moz-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.rounded-inverse:hover { text-color: 0 -1px 0 rgba(0, 0, 0, 0.25); text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25); }
+.rounded:hover {
+	background-color: #d9d9d9;
+	background-position: 0 -15px;
+		-webkit-transition: background-position 0.1s linear;
+		-moz-transition: background-position 0.1s linear;
+		-o-transition: background-position 0.1s linear;
+		transition: background-position 0.1s linear;
+		outline: thin dotted #333;
+		outline: 5px auto -webkit-focus-ring-color;
+		outline-offset: -2px;
+}
+/* ********************************************************************************* */
+/* end rounded styles made by PICCORO lenz McKAY based on catalogo own pure */
+/* ********************************************************************************* */
+
+/* begin class tabber for products and query around data products */
+
+ul.tabs
+{
+	padding: 2px 0;
+	margin:0;
+	list-style-type: none;
+	text-align: center; /*set to left, center, or right to align the tabs as desired*/
+}
+
+ul.tabs li
+{
+	display: inline;
+	margin: 0;
+	margin-left:1px; /*distance between tabs*/
+}
+
+ul.tabs li a
+{
+	text-decoration: none;
+	position: relative;
+	z-index: 2;
+	margin-top: 1px;
+	padding: 2px 10px;
+	border: 1.5px solid #CCC;
+	border-radius: 6px 6px 0 0;
+	-moz-border-radius: 6px 6px 0 0;
+	-webkit-border-radius: 6px 6px 0 0;
+	outline:none;
+}
+
+ul.tabs li a:visited
+{
+/*	color: #000;*/
+}
+
+ul.tabs li a:hover
+{
+	border: 1.5px solid #B7B7B7;
+}
+
+ul.tabs li.selected a
+{
+	/*selected tab style */
+	position: relative;
+	top: 0px;
+	font-weight:bold;
+	border: 1.5px solid #B7B7B7;
+	border-bottom-color: white;
+	background:none;
+}
+
+
+ul.tabs li.selected a:hover
+{
+	/*selected tab style */
+	text-decoration: none;
+}
+
+div.tabcontent
+{
+	display: block;
+}
+
+div.tabcontents
+{
+	border: 1.5px solid #B7B7B7; padding: 2px;
+	border-radius: 0 4px 4px 4px;
+	-moz-border-radius: 0 6px 4px 4px;
+	-webkit-border-radius: 0 4px 4px 4px;
+}
+

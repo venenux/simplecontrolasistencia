@@ -1,0 +1,39 @@
+# Gambas Form File 3.0
+
+{ Form Form
+  MoveScaled(0,0,65,38)
+  { ayudausuario TextLabel
+    MoveScaled(3,0,59,27)
+    Font = Font["DejaVu Sans Mono,+2"]
+    ToolTip = ("Para entrar a la gestion de enlistamiento de huellas dactilares, ud debe comunicar a sistemas estos datos mostrados, y despues se le proporcionara una clave que ingresara junto su id (identificador o cedula).<br><br> Use el sistema de mensageria escriba a adminejabberd@syscatalogo.homelinux.net")
+    Text = ("Para entrar a la gestion de enlistamiento de huellas dactilares, ud debe comunicar a sistemas estos datos mostrados, y despues se le proporcionara una clave que ingresara junto su id (identificador o cedula).<br><br> Use el sistema de mensageria escriba a adminejabberd@syscatalogo.homelinux.net")
+    Alignment = Align.Justify
+  }
+  { btnenviar Button
+    MoveScaled(48,27,14,9)
+    ToolTip = ("Escriba el codigo y su usuario y pulse este boton")
+    Text = ("Verificar")
+  }
+  { inputid TextBox
+    MoveScaled(33,27,14,4)
+  }
+  { inputcodigo TextBox
+    MoveScaled(33,32,14,4)
+    Password = True
+  }
+  { labelid Label
+    MoveScaled(25,28,7,3)
+    Text = ("id:")
+    Alignment = Align.Right
+  }
+  { labelcode Label
+    MoveScaled(25,32,7,3)
+    Text = ("codigo:")
+    Alignment = Align.Right
+  }
+  { btncancel Button
+    MoveScaled(3,32,14,4)
+    Text = ("Cancelar")
+    Cancel = True
+  }
+}
