@@ -73,19 +73,20 @@ CREATE  TABLE  registros2013.sysasis_registro (
   -- estos registros "dispersos" (ejemplo, entro en castellana, su primera salida debe ser de castellana antes de ir a otro lado)
   -- diferencia entre registro no puede ser menor a 1/3 hora y mayor a 6 horas CUANDO SEAN SELLOS DISTINTOS
 
-﻿DROP TABLE IF EXISTS sysasis_fichas ;
+
+DROP TABLE IF EXISTS public.sysasis_fichas ;
 
 -- tabla de los usuarios/mensajeria/correo, sean trabajadores o de sistema, ambos son usuarios, solo que trabajadores no tendran clave
 CREATE TABLE sysasis_fichas
 (
   cod_ficha VARCHAR(20) NOT NULL, -- para el futuro es apellido+inicialnombre (prietol)
-  ide_sesion VARCHAR(20) NOT NULL, -- nombre session que debe ser igual al sistema d emensajeria
+  ide_sesion VARCHAR(80) NOT NULL, -- nombre session que debe ser igual al sistema d emensajeria
   cod_perfil VARCHAR(20) NULL, -- para futuro perfil asociado
   cod_geren VARCHAR(20) NULL, -- para futuro gerencia a que responde
   cod_admin VARCHAR(20) NULL, -- para futuro responsabilidad a que responde
-  cod_clave VARCHAR(20) NULL, -- para futuro, clave para iniciar session
-  fec_actualizacion DATE NULL , -- fecha en que se altero los datos de esta tabla por ultima vez
-  cod_usuasys VARCHAR(20) NULL , -- codigo/usuario que altero los datos por ultima vez
+  cod_clave VARCHAR(80) NULL, -- para futuro, clave para iniciar session
+  des_nombre VARCHAR(80) NULL,
+  des_apellido VARCHAR(80) NULL,
+  fec_actualizacion DATE NULL DEFAULT now(), -- fecha en que se altero los datos de esta tabla por ultima vez
+  cod_usuasys VARCHAR(20) NULL DEFAULT 'systemas', -- codigo/usuario que altero los datos por ultima vez
   PRIMARY KEY (ide_sesion) );
-
-
