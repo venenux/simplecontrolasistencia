@@ -1,5 +1,5 @@
 	<?php
-	if (!isset($titlepage)) $titlepage = 'Bienvenid@';
+	if (!isset($titlepage)) $titlepage = 'Bienvenid@ Usuario';
 	if (!isset($contlrname)) $contlrname = 'indexcontroler';
 	if (!isset($datacontent)) $datacontent = 'Disponible en esta seccion:';
 	if (!isset($viewstyle)) $viewstyle = '';
