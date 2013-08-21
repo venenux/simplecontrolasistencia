@@ -2,9 +2,8 @@ FMain
 interfaztomarasistencia
 0
 0
-1.0.1
+1.1.0
 
-gb.args
 gb.image
 gb.gui
 gb.form
@@ -15,7 +14,9 @@ gb.db.form
 gb.db.sqlite2
 gb.db.sqlite3
 gb.settings
+gb.net
 gb.mime
+gb.net.curl
 gb.pcre
 gb.v4l
 gb.vb
