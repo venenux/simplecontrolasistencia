@@ -11,6 +11,7 @@ Public Sub prepararporconfiguracion() As DData
     Dim ubino As Integer = 0, codgno As Integer = 0, camno As Integer = 0   ' codigos de estado de error para mensages anidados en vez de varios
     
     Dim dc_mv As String = "modalidad/verificado", dc_me As String = "modalidad/enrolado"
+    Dim dc_ma As String = "modalidad/acceso", dc_mm As String = "modalidad/modo"
     Dim dc_dd As String = "dispositivo/camara", dc_ds As String = "dispositivo/tamano"
     Dim dc_lm As String = "localidad/ubicacion", dc_lu As String = "localidad/codger"
     Dim dc_oc As String = "origenes/compresa", dc_ct As String = "conexion/tipo"
@@ -27,6 +28,8 @@ Public Sub prepararporconfiguracion() As DData
     Dim origenes_tipo As String = "csv"                             ' tipo de archivo de datos en caso de no existir db origen al dia
     Dim modalidad_enrolado As String = "activacion"                 ' modo enrolado por defecto, activacion o directo son las opciones
     Dim modalidad_verificado As String = "dedoycara"                ' modo verificado por defecto, dedo, cara y dedoycara son las opciones
+    Dim modalidad_acceso As String = "valido"                       ' modalidad de acceso o registro, auto o valido solo los de nomina registran asistencia
+    Dim modalidad_modo As String = "auto"                           ' modalidad de ejecucion de sincronizado/aplicacion
     Dim conexion_tipo As String = "sqlite3"                         ' coneccion empleada para db embebida, sqlite y berkerlydb
     
     ' esto solo funciona en entorno de desarrollo, cuando se lanza desde la ide
@@ -108,12 +111,18 @@ Public Sub prepararporconfiguracion() As DData
         datos.setUbicacionLug(configuracion[dato_configurar])
     Endif 
     
-    dato_configurar = dc_lu
+    ' dato_configurar = dc_mm
+    ' If IsNull(configuracion[dato_configurar, Null]) Then
+    '     datos.setModoApp(modalidad_modo)
+    ' Else 
+    '     datos.setModoApp(configuracion[dato_configurar])
+    ' Endif 
+    
+    dato_configurar = dc_ma
     If IsNull(configuracion[dato_configurar, Null]) Then
-        codgno = 1
-        datos.setUbicacionUsr(localidad_usuario)
+        datos.setModoAcceso(modalidad_acceso)
     Else 
-        datos.setUbicacionUsr(configuracion[dato_configurar])
+        datos.setModoAcceso(configuracion[dato_configurar])
     Endif 
     
     If codgno == 1 Or camno == 1 Or ubino == 1 Then

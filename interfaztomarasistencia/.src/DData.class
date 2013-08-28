@@ -341,6 +341,34 @@ Public Sub getModoVerificado() As String
 End
 
 
+'' modo en que se registrara asentamientos, si asistencia o control de acceso
+Private modoacceso As String
+'' flag de control de acceso, si registra cualqueir entrada y salida (todos/true) o solo asistencia (validos/false)
+Private modotodos As Boolean
+'' define si se hara control de acceso o solo modo de asentamientos asistencias, puede ser "auto", "valido" o "todos"
+Public Sub setModoAcceso(modo As String)
+    If Comp(modo, "todos", gb.IgnoreCase) = 0 Then
+    modoacceso = "todos"
+    modotodos = True
+    Else
+        modotodos = False
+        If Comp(modo, "auto", gb.IgnoreCase) = 0 Then
+            modoacceso = "validos"
+        Else
+            modoacceso = "auto"
+        Endif
+    Endif
+End
+'' responde si se permite asentamientos de cualqueir asistencia (modo control de acceso)
+Public Sub itsAccesoTodos() As Boolean
+    Return modotodos
+End
+'' retorna que tipo de acceso se definio
+Public Sub getModoAcceso() As String
+    Return modoacceso
+End
+
+
 '' clave dinamica de enrolado
 Private adminenrolclave As String
 '' asignar la clave de administracion de enrolado
