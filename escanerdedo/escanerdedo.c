@@ -1,16 +1,19 @@
 /*
- * main.c 
+ * Copyright (c) 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com>
+ * escanerdedo.c backend for enroll or verify per one finger at time
+ * the purpose its to put in filesystem the data as offer to 
+ * then a fronend will catch this and link agains one id per user.
  * 
+ * This software are permit to copy and modify only if this header copyright
+ * its include complety and cited the original author as original maker.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-/* inclusion de libfprint, ojo deben tener el repo venenux y libfprint-dev instalado */
-#include <fprint.h>
-/* inclusion para manejo de ids de dispositivos */
-#include <sys/types.h>
+#include <fprint.h>	/* inclusion de libfprint, ojo deben tener el repo venenux y libfprint-dev instalado */
+#include <sys/types.h>	/* inclusion para manejo de ids de dispositivos */
 
 #define DIR_MIO_JODA 0750
 typedef int bool;
@@ -30,8 +33,7 @@ int main(int argc, char **argv)
 	int devresult = 1; /* usaremos esto para marcar el estado de nuestro dispositivo usandose */
 	int prg_sts = 1; /* estado en que se esta el programa, asume todo malo, se verifica en el camino todo */
 
-	/* inicializacion de la libreria, carga de objetos y corroboracion de dispositivos posibles */
-	devresult = fp_init();
+	devresult = fp_init();/* inicializacion de la libreria, carga de objetos y corroboracion de dispositivos posibles */
 	if ( devresult < 0 ) /* libreria mal enlazada o no esta instalado libfprint, instalarla con aptitude install libfprint-dev */
 	{
 		fprintf(stderr,"error");
@@ -149,7 +151,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "finger: 1 Lefth thum to 5 lefth little and so right\n");
 		fprintf(stderr, "dedo: 1 izqu pulgar a 5 izqu pequeño y asi derecha\n");
 		fprintf(stderr, "\n");
-		fprintf(stderr, "fingerscaner v 1.0 for sisasistencia on VenenuX, made by PICCORO Lenz MCKAY\n");
+		fprintf(stderr, "escanerdedo v 1.0 for simpleasistencia on VenenuX, made by PICCORO Lenz MCKAY\n");
 		exit(prg_sts);
 	}
 
@@ -304,8 +306,8 @@ int main(int argc, char **argv)
 	if ( dummy == FALSE )
 		fp_dev_close(dispositivo);
 
-	fp_exit ();
-	/* salida */
+	fp_exit ();	/* salida */
+	
 	return (prg_sts);
 
 }
