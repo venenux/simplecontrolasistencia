@@ -1,0 +1,890 @@
+' Gambas class file
+
+''- - - - - - * * * * * * * * * * * * * - -- - - - - - - - - - - -
+'Programa Reportes Asistencia
+'Diseñado por: Tyrone Lucero Useche.
+'Descripción:  Este programa    realiza  reportes  sencillos   sobre 
+'      los  trabajadores  de  una empresa con mas de  3.000 empleados
+'      cuyos datos se encuentran ubicados en una Base De Datos Remota
+'      creada, mantenida y diseñada en POSTGRESQL.
+'Target: Linux 2.6 ++
+'Lenguaje de Programación : Gambas 3.04
+'Sistema Operativo: Linux 
+'                   Kernel = 2.6.32 - trunk - 686
+'                   Architecture = x86
+'                   Distribution = debian 5.1
+'
+'
+'Observaciones: NO PUEDE SER MIGRADO A MS-WINDOWS.
+'Fecha Inicio:  10/09/2013
+'Fecha Termino: 20/10/2013 
+'Versión : 4.0.0 
+''-----------------*****************------------------------
+'*****------------********* Variables Globales **********--------------*******
+' establecer variable de control para controlar el reporte ip por
+'  lugar, ejecutarse una sola vez.
+Private firstrun As Boolean = False
+' guardar la columna donde se hizo click (reporte tercera pestaña)
+Private rr As Integer
+' declaro el arreglo de registros para cada reporte:
+Private arregloreporte1 As Registro[] ' reporte por lugar
+Private arregloreporte2 As Registro[] ' reporte por cedula
+'*****------------**********************************--------------*******
+'*****------------**********************************--------------*******
+'' Esta función  hace el  cálculo las horas trabajadas por el empleado.
+'' 
+'' Parámetros de entrada:
+''  
+'' *  h_e : hora entrada
+'' *  m_e: minuto hora entrada  
+'' *  h_d  : hora descanso
+'' *  m_d : minuto hora descanso
+'' *  h_r : hora reicorporacion
+'' *  m_r : minuto hora reicorporacion
+'' *  h_s; horas salida
+'' *  m_s :minuto hora salida
+'' 
+'' Salida:
+''  * Cadena en un formato específico: hh:mm
+ '' * 
+Public Function calculo_horas_trab(h_e As String, m_e As String, h_d As String, m_d As String, h_r As String, m_r As String, h_s As String, m_s As String) As String
+  Dim horas_d As Integer              ' variables e tipo entero que
+  Dim horas_e As Integer              ' guardan las horas y minutos 
+  Dim horas_r As Integer              ' de entrada, salida
+  Dim horas_s As Integer              ' descanso y reicorporación 
+  Dim minut_e As Integer
+  Dim minut_d As Integer
+  Dim minut_r As Integer
+  Dim minut_s As Integer
+  Dim summanana As Integer            ' acumula todas las horas
+  Dim sumtarde As Integer             ' hora usada para el descanso - SE RESTA -
+  Dim summinuto As Integer            ' acumula los minutos
+  Dim sumhoras As Integer             ' horas contadas
+  Dim minumanan As Integer            ' minutos entre la entrada y el descanso
+  Dim minutarde As Integer            ' minutos entre reicorporacion y salida
+  Dim f_h_manana As Integer           ' se enciende si alguna hora es cero en horario matutino(h_ent - h_salid)
+  Dim f_h_tarde As Integer            ' se enciende si alguna hora es cero en horario de tarde(h_comi - h_salida)
+  Dim temporal As Integer              ' variable auxiliar
+  Dim horaf As String                  ' guardará el cast de las horas
+  Dim min_f As String                  ' guardará el cast minutos
+  Dim calculo_h As String              ' RESULTADO DE SALIDA
+  Dim residuo As Integer               ' RESIDUO
+  Dim cociente As Integer              ' COCIENTE
+  '-------------------------------------------------------------
+  ' transformar a entero las cadenas (parametros de entrada)
+  horas_e = Val(h_e)       
+  minut_e = Val(m_e)  
+  horas_d = Val(h_d)   
+  minut_d = Val(m_d)  
+  horas_r = Val(h_r)    
+  minut_r = Val(m_r)   
+  horas_s = Val(h_s)    
+  minut_s = Val(m_s)    
+      ' verificar cuantas horas hay entre la entrada y la salida descanso
+        If ((horas_d * horas_e) = 0) Then f_h_manana = 1 
+        If ((horas_s * horas_r) = 0) Then f_h_tarde = 1 
+        If (f_h_manana = 0) Then 
+          temporal = horas_d - horas_e 
+          If (temporal < 0) Then temporal = temporal * -1  
+             summanana = summanana + temporal
+             temporal = minut_d - minut_e
+          If (temporal < 0) Then temporal = temporal * -1 
+              minumanan = minumanan + temporal
+        End If
+        If (f_h_tarde = 0) Then 
+           temporal = horas_s - horas_r
+             If (temporal < 0) Then temporal = temporal * -1 
+               sumtarde = sumtarde + temporal
+               temporal = minut_s - minut_r
+             If (temporal < 0) Then temporal = temporal * -1 
+           minutarde = minutarde + temporal
+        End If
+  '---------------- cálculo de las horas -------------
+  sumhoras = summanana + sumtarde
+  summinuto = minumanan + minutarde
+  While summinuto > 59 ' calcular los minutos sobrantes, de centesimal  
+    cociente = summinuto / 60 ' a sexagesimal
+    residuo = summinuto % 60
+    sumhoras = sumhoras + cociente
+    summinuto = residuo
+  Wend 
+  ' Observación: este método  calcula con exactitud las horas trabajadas
+  ' por motivos de la empresa (razones ajenas a mi voluntad)
+  ' no debo mostrar más de 8 horas trabajadas...
+  ' If sumhoras >= 9 Then 
+  '     sumhoras = 8
+  '     summinuto = 0
+  ' End If
+  ' transformar a cadena, formato hh:mm
+  horaf = Str(sumhoras) 
+  min_f = Str(summinuto)
+  If Len(horaf) < 2 Then horaf = "0" & horaf     ' concatenar 
+  If Len(min_f) < 2 Then min_f = "0" & min_f     ' concatenar    
+  '------------------------------------------------------------------------
+  'devolver el resultado la cadena concatenada
+  calculo_h = horaf & ":" & min_f
+  Return calculo_h
+End
+'' Colocar la fecha en la fecha por lugar directamente de Datechooser
+Public Sub almana_tab1_Change()
+
+  almana_tab1.Visible = True
+  fecha_ing_lugar_txt.Text = almana_tab1.Day & "/" & almana_tab1.Month & "/" & almana_tab1.Year
+
+End
+
+'' Colocar la fecha en la fecha por ci directamente de Datechooser
+Public Sub almana_tab2_Change()
+
+  almana_tab2.Visible = True
+  fecha_ing_cedula_txt.Text = almana_tab2.Day & "/" & almana_tab2.Month & "/" & almana_tab2.Year
+
+End
+
+'' Formulario de reportes de 3 pestañas
+'' * Primera Pestaña: Reporte por código de lugar y fecha 
+'' * Segunda Pestaña: Reporte por numero de cédula y fecha
+'' * Tercera Pestaña: Reporte dirección IP por Ubicación 
+'' cada una es independiente y puede contener cada reporte simultaneamente.
+Public Sub Form_Open()
+  ' configurar el tamaño de la aplicación de acuerdo al tamaño del
+  ' escritorio ( VE A LA LINEA 213 PARA QUE COPIES ESO EN TU MODULO)
+  With Me
+    .Width = Desktop.Width
+    .Height = Desktop.Height
+    .FullScreen = False ' ventana, con todas sus caracteristicas
+  End With 
+  Me.Center ' por supuesto, centrado en pantalla 
+  ' iniciamos todo los tamano al la pantalla o al tamano del usuario asigne
+  reinicio_tamanos()
+  ' configurar la vista de cada grid para recibir la informacion...
+  gridlugar.Columns.Count = 7 ' son 7 columnas para el primer reporte
+  gridlugar.header = True
+  gridficha.Columns.Count = 7 ' son 7 columnas para el segundo reporte
+  gridficha.header = True
+  gripcodip.columns.Count = 4 ' este reporte tiene 4 columnas
+  gripcodip.header = True
+  '-------------------------------------------------------------------
+  ' configurar gridlugar  en la primera pestaña: Primer reporte
+  gridlugar.Columns[0].Title = "Hora Ent." 
+  gridlugar.Columns[0].W = 100
+  gridlugar.Columns[1].Title = "Hora Des." 
+  gridlugar.Columns[1].W = 100  
+  gridlugar.Columns[2].Title = "Hora Ret." 
+  gridlugar.Columns[2].W = 100
+  gridlugar.Columns[3].Title = "Hora Sal." 
+  gridlugar.Columns[3].W = 100
+  gridlugar.Columns[4].Title = "Horas Lab. " 
+  gridlugar.Columns[4].W = 150
+  gridlugar.Columns[5].Title = " Pertenece "   ' ojo concatenar codger y descripcion gerencia/lugar
+  gridlugar.Columns[5].W = 250
+  gridlugar.Columns[6].Title = "Datos "       ' ojo concatenar cedula y nombres/apellidos
+  gridlugar.Columns[6].W = 350
+  '------------------------------------------------------------------- 
+  ' configurar gridficha en la segunda pestaña : Segundo Reporte
+  gridficha.Columns[0].Title = "Hora Ent." 
+  gridficha.Columns[0].W = 100
+  gridficha.Columns[1].Title = "Hora Des." 
+  gridficha.Columns[1].W = 100  
+  gridficha.Columns[2].Title = "Hora Ret." 
+  gridficha.Columns[2].W = 100
+  gridficha.Columns[3].Title = "Hora Sal." 
+  gridficha.Columns[3].W = 100
+  gridficha.Columns[4].Title = "Horas Lab.  " 
+  gridficha.Columns[4].W = 150
+  gridficha.Columns[5].Title = " Pertenece "   ' ojo concatenar codger y descripcion gerencia/lugar
+  gridficha.Columns[5].W = 250
+  gridficha.Columns[6].Title = "Lugar(es) "   ' ojo concatenar codger y descripcion gerencia/lugar
+  gridficha.Columns[6].W = 350
+  '------------------------------------------------------------------------
+  ' este código será migrado
+  'configurar el grid de la tercera pestaña
+  gripcodip.Columns[0].Title = ""             'servirá cómo indice 
+  gripcodip.Columns[0].W = 0
+  gripcodip.Columns[0].Resizable = False      ' tamaño fijo
+  gripcodip.Columns[1].Title = "Código"       ' cod_lugar (igual cod_ger  con 3 dgitos)
+  gripcodip.Columns[1].W = 100
+  gripcodip.Columns[2].Title = " Ip Maquina "   ' cod_ip
+  gripcodip.Columns[2].W = 200
+  gripcodip.Columns[3].Title = " Descripcion "  ' des_lugar
+  gripcodip.Columns[3].W = 200
+   ' invocar el procedimiento que hace el llenado autómatico una  vez arranque el programa
+   ' y no se repita mas
+   If Not (firstrun) Then reporte_ip_x_lugar()
+End
+Public Sub salir_cmd_Click()
+  
+  Quit ' usuario  da orden de cerrar
+  
+End
+
+'' Este procedimiento permite llenar el grid de la primera pestaña.
+'' Parámetros de entrada:
+'' * Código del lugar (desde text box)  
+'' * Fecha : el dia en que se va efectuar el reporte (desde text box)
+'' Salida:
+'' * Grid lleno con los datos.
+'' Dependencias: 
+'' * Para efectuar el cálculo importa datos desde
+'' un servidor remoto. Los datos provienen de una tabla de una 
+'' base de datos Postgresql.
+'' * Hace uso de la función calculo_horas
+
+Public Sub reporte_lugar_btn_Click()
+  ' permite  mostrar los resultados en el grid de la primera pestaña
+  ' declaracion variables  
+  Dim cx_pg As Connection ' conector a la bd postgresql
+  Dim cx_pg2 As Connection
+  Dim cx_pg3 As Connection
+  Dim pos As Integer      ' permite acceder posiciones en el recordset 
+  Dim q1, q2, q3, q4 As String ' cadenas de uso general
+  Dim q5, q6, q7, q8 As String ' cadenas de uso general
+  Dim q9, q10, q11, q12, q13, horastrab As String ' cadenas de uso general   
+  Dim rs1 As Result       '  recordset 
+  Dim rs2 As Result
+  Dim rs3 As Result
+  Dim igual As Integer
+  Dim feb As String ' fecha con el formato para realizar la busqueda
+  Dim d, m, codger As String
+  Dim o, k As Boolean
+  Dim x As Integer       ' cuenta cada registro que coincide 
+  Dim reg As Registro
+
+  '--------------------------------------------------------------------
+  almana_tab1.Visible = False 'ocultar el almanaque
+
+  Wait 1
+  Me.Refresh
+  ' la fecha desde la bd postgres tiene el formato : mm/dd/yyyy
+  '  configurar la fecha para que sea exactamente igual a las que
+  '  se encuentran en la bd
+  d = almana_tab1.Day
+  m = almana_tab1.Month 
+  If Len(d) < 2 Then d = "0" & d
+  If Len(m) < 2 Then m = "0" & m 
+  feb = m & "/" & d & "/" & almana_tab1.Year
+  '----------------------------------------------------------------------
+  '  preguntar si los campos estan llenos... el que esté vacio debe rellenarse
+  If Len(fecha_ing_lugar_txt.Text) > 1 Then 
+    k = True
+  Else
+    Message.Error("Debe seleccionar una fecha.")
+    k = False
+  End If
+  If Len(lugar_text.Text) > 1 Then
+    o = True
+  Else
+    Message.Error("Debe asignar un Código de lugar.")
+    o = False
+  End If
+  ' si alguno esta vacio no hacer nada... 
+  If (o And k) Then  
+     reporte_lugar_btn.Visible = False
+     reporte_lugar_btn.Enabled = False
+     rehacer_reporte_lugar_btn.Enabled = False
+     rehacer_reporte_lugar_btn.visible = False
+    ' conectarse a la  base de datos para efectuar el query 
+    cx_pg = conex_postgres.conectar()
+    ' cargar recordset con los registros del lugar dado, luego filtro la fecha y el lugar
+    rs1 = cx_pg.Find("sysasis_registro", "cod_lugar = &1 ", lugar_text.text)
+    cx_pg2 = conex_postgres.conectar()
+    cx_pg3 = conex_postgres.conectar() 
+    pos = 0
+    x = 0 ' resetear el valor de x 
+      arregloreporte1 = New Registro[] 
+    For Each rs1 
+      ' esta es la fecha que viene desde la bd
+      q1 = rs1!fec_registro 
+      codger = rs1!cod_gerencia   ' en reporte por lugar ya sabemos el lugar, pero no al que pertenece el usuario
+      q12 = rs1!cod_ficha
+      igual = Comp(q1, feb, 0) ' se compara en forma Binaria
+      If igual = 0 Then ' la fechas son iguales 
+        ' llenar el grid con los datos de los trabajadores, todos lo que estan alli
+        ' buscar por la cedula de identidad (ficha) en la otra tabla
+        x = x + 1
+        gridlugar.Rows.Count = x     ' asignar las filas 
+        Try rs2 = cx_pg2.find("consolidadotemp_export", "ficha =&1", rs1!cod_ficha)   
+          If rs2.Available Then ' si se encontro, concatenar la salida 
+             q2 = rs2!nombres
+             q3 = rs2!apellidos
+           Else
+             q2 = "No Disponible ."
+              q3 = "."     
+             Print "no hallado"
+        End If 
+        ' hacer otro query en otra tabla para traer  el lugar donde trabaja
+        Try rs3 = cx_pg3.find("consolidado_export", "cod_ficha =&1", rs1!cod_ficha)   
+          If rs3.Available Then 
+             q13 = rs3!des_ubicacion
+               If Len(q3) < 2 Then
+                  ' si el nombre y apellido no se hallaron el la tabla
+                  ' consolidadotemp_export, entonces tomarlos de
+                  ' la tabla consolidado_export
+                  q2 = rs3!nombres
+                  q3 = rs3!apellidos
+                End If
+           Else
+             q13 = " Lugar no Disponible" 
+        Endif
+      ' preparar las cadenas con  los resultados
+        q4 = rs1!horaentrada
+        q5 = rs1!minuentrada
+        q6 = rs1!horadescanso
+        q7 = rs1!minudescanso
+        q8 = rs1!horareincor
+        q9 = rs1!minureincor
+        q10 = rs1!horasalida
+        q11 = rs1!minusalida
+        ' rellenar con ceros si hay datos menores que 10
+        If Len(q4) < 2 Then q4 = "0" & q4     ' concatenar 
+        If Len(q5) < 2 Then q5 = "0" & q5
+        If Len(q6) < 2 Then q6 = "0" & q6     ' concatenar 
+        If Len(q7) < 2 Then q7 = "0" & q7
+        If Len(q8) < 2 Then q8 = "0" & q8     ' concatenar 
+        If Len(q9) < 2 Then q9 = "0" & q9
+        If Len(q10) < 2 Then q10 = "0" & q10     ' concatenar 
+        If Len(q11) < 2 Then q11 = "0" & q11
+        '  cargar el registro con la cadenas ya preparadas
+        horastrab = calculo_horas_trab(q4, q5, q6, q7, q8, q9, q10, q11)
+                          
+        reg = New Registro(q4 & ":" & q5, q6 & ":" & q7, q8 & ":" & q9, q10 & ":" & q11, horastrab, q13, q12 & ", " & q2 & " " & q3)
+        arregloreporte1.Add(reg)
+      End If 'comparación cadenas 
+    Next ' ciclo para procesar recordset
+    ' desconectarse de la base de datos
+      conex_postgres.desconectar(cx_pg3)
+      conex_postgres.desconectar(cx_pg2)
+      conex_postgres.desconectar(cx_pg)  
+    ' rellenar el grid a partir del arreglo cargado
+      For pos = 0 To arregloreporte1.Max 
+        gridlugar[pos, 0].Text = arregloreporte1[pos].dar_hora_entrada()     ' Hora Entrada    
+        gridlugar[pos, 1].Text = arregloreporte1[pos].dar_hora_descanso()    ' Hora Descanso    
+        gridlugar[pos, 2].Text = arregloreporte1[pos].dar_hora_retorno()     ' Hora Retorno   
+        gridlugar[pos, 3].Text = arregloreporte1[pos].dar_hora_salida()      ' Hora Salida    
+        gridlugar[pos, 4].Text = arregloreporte1[pos].dar_horas_trabajadas() ' Horas Laboradas  
+        gridlugar[pos, 5].Text = arregloreporte1[pos].dar_lugar()            ' Lugar que  pertenece
+        gridlugar[pos, 6].Text = arregloreporte1[pos].dar_nombre_completo()  ' nombres y apellidos
+     Next  ' pos   
+    rehacer_reporte_lugar_btn.Enabled = True 
+    rehacer_reporte_lugar_btn.Visible = True
+    reporte_lugar_btn.Visible = False
+    reporte_lugar_btn.Enabled = False
+    If x = 0 Then Message.Info("Sin resultados.")
+ 
+    rehacer_reporte_lugar_btn.Enabled = True
+    rehacer_reporte_lugar_btn.Visible = True
+  End If 
+End
+'' Este procedimiento permite llenar el grid de la seguda pestaña.
+'' Parámetros de entrada:
+'' * Cédula del empleado (desde text box)  
+'' * Fecha: el dia en que se va efectuar el reporte (desde text box)
+'' Salida:
+'' * Grid lleno con los datos.
+'' Dependencias: 
+'' * Para efectuar el cálculo importa datos desde
+'' un servidor remoto. Los datos provienen de una tabla de una 
+'' base de datos Postgresql.
+'' * Hace uso de la función calculo_horas
+Public Sub reporte_cedula_btn_Click()
+  Dim cx_pg As Connection ' conector a la bd postgresql
+  Dim cx_pg2 As Connection
+  Dim cx_pg3 As Connection
+  Dim pos As Integer      ' permite acceder posiciones en el recordset 
+  Dim q1, q2, q3, q4 As String ' cadenas de uso general
+  Dim q5, q6, q7, q8 As String ' cadenas de uso general
+  Dim q9, q10, q11, q12 As String ' cadenas de uso general   
+  Dim rs1 As Result       '  recordset 
+  Dim rs2 As Result
+  Dim rs3 As Result
+  Dim igual As Integer
+  Dim feb, horastrab As String ' fecha con el formato para realizar la busqueda
+  Dim d, m, codger As String
+  Dim i As Integer
+  Dim o, k As Boolean
+  Dim x As Integer
+  Dim reg2 As Registro
+  '--------------------------------------------------------------------
+  almana_tab2.Visible = False 'ocultar el almanaque
+
+  conex_postgres.desconectar(cx_pg2)   
+  conex_postgres.desconectar(cx_pg)
+  '' la fecha desde la bd postgres tiene el formato : mm/dd/yyyy
+  '  configurar la fecha para que sea exactamente igual a las que
+  '  se encuentran en la bd
+  d = almana_tab2.Day
+  m = almana_tab2.Month 
+  If Len(d) < 2 Then d = "0" & d
+  If Len(m) < 2 Then m = "0" & m 
+  feb = m & "/" & d & "/" & almana_tab2.Year
+  '-------------------------------------------------------------------
+  ' preguntar si los campos estan llenos... el que esté vacio debe rellenarse
+  If Len(fecha_ing_cedula_txt.Text) > 1 Then 
+    k = True
+  Else
+    Message.Error("Debe seleccionar una fecha.")
+    k = False
+  End If
+  If Len(cedula_text.Text) > 1 Then
+    o = True
+  Else
+    Message.Error("Debe Introducir el número de Cédula.")
+    o = False
+  End If
+  ' si alguno esta vacio no hacer nada... 
+  ' hay que uso eficiente y racional de los recursos a la mano.
+  If (o And k) Then 
+    ' se cumplió la pre-condición (text box llenos)
+    ' ocultar los botones consulta
+      rehacer_reporte_cedula_btn.Enabled = False
+      rehacer_reporte_cedula_btn.Visible = False 
+      reporte_cedula_btn.Visible = False
+      reporte_cedula_btn.Enabled = False
+    
+    ' conectarse a la  base de datos para efectuar el query 
+    cx_pg = conex_postgres.conectar()
+    ' cargar recordset con los registros del lugar dado, luego filtro la fecha y el lugar
+    rs1 = cx_pg.Find("sysasis_registro", "cod_ficha = &1 ", cedula_text.Text)
+    cx_pg2 = conex_postgres.conectar()
+    cx_pg3 = conex_postgres.conectar()
+    pos = 0
+    x = 0 ' resetear el valor de x 
+    arregloreporte2 = New Registro[] 
+    For Each rs1 
+      q1 = rs1!fec_registro ' esta es la fecha que viene desde la bd
+      codger = rs1!cod_gerencia
+      q12 = rs1!cod_lugar
+      igual = Comp(q1, feb, i) ' se compara
+      If igual = 0 Then ' la fechas son iguales 
+        ' llenar el grid con los datos de los trabajadores, todos lo que estan alli
+        ' buscar por la cedula de identidad (ficha) en la otra tabla
+        x = x + 1
+        gridficha.Rows.Count = x     ' asignar las filas 
+        Try rs2 = cx_pg2.find("consolidadotemp_export", "ficha =&1", rs1!cod_ficha)   
+        If rs2.Length > 0 Then ' si se encontro, concatenar la salida 
+            q2 = rs2!nombres
+            q3 = rs2!apellidos
+         Else
+           q2 = "No Disponible ."
+           q3 = "."     
+          End If 
+        Try rs3 = cx_pg3.find("consolidado_export", "cod_ficha =&1", rs1!cod_ficha)   
+         If rs3.Available Then 
+            q12 = rs3!des_ubicacion
+            If Len(q3) < 2 Then
+              q2 = rs3!nombres
+              q3 = rs3!apellidos
+            End If
+          Else
+             q12 = " Lugar no Disponible" 
+        Endif
+        
+        ' preparar las cadenas con  los resultados
+        q4 = rs1!horaentrada
+        q5 = rs1!minuentrada
+        q6 = rs1!horadescanso
+        q7 = rs1!minudescanso
+        q8 = rs1!horareincor
+        q9 = rs1!minureincor
+        q10 = rs1!horasalida
+        q11 = rs1!minusalida
+        ' rellenar con cero si hay datos menores que 10
+        If Len(q4) < 2 Then q4 = "0" & q4     ' concatenar 
+        If Len(q5) < 2 Then q5 = "0" & q5
+        If Len(q6) < 2 Then q6 = "0" & q6     ' concatenar 
+        If Len(q7) < 2 Then q7 = "0" & q7
+        If Len(q8) < 2 Then q8 = "0" & q8     ' concatenar 
+        If Len(q9) < 2 Then q9 = "0" & q9
+        If Len(q10) < 2 Then q10 = "0" & q10     ' concatenar 
+        If Len(q11) < 2 Then q11 = "0" & q11
+        ' rellenar el arreglo con la cadenas ya preparadas
+        cedu_lbl.visible = True
+        nombrecomp_text.Visible = True
+        nombrecomp_text.text = q2 & " " & q3    ' nombre completo
+        horastrab = calculo_horas_trab(q4, q5, q6, q7, q8, q9, q10, q11)
+      '                          1              2             3                4               5              6        
+        reg2 = New Registro(q4 & ":" & q5, q6 & ":" & q7, q8 & ":" & q9, q10 & ":" & q11, horastrab, q12, q2 & " " & q3)
+        arregloreporte2.Add(reg2)
+      End If 'comparación fechas   
+    Next ' ciclo para procesar recordset 
+      ' desconectarse de la base de datos 
+      conex_postgres.desconectar(cx_pg3)
+      conex_postgres.desconectar(cx_pg2)
+      conex_postgres.desconectar(cx_pg)  
+     ' rellenar el grid con los datos del arreglo
+     For pos = 0 To arregloreporte2.max 
+        gridficha[pos, 0].Text = arregloreporte2[pos].dar_hora_entrada()     ' Hora Entrada    
+        gridficha[pos, 1].Text = arregloreporte2[pos].dar_hora_descanso()    ' Hora Descanso    
+        gridficha[pos, 2].Text = arregloreporte2[pos].dar_hora_retorno()     ' Hora Retorno   
+        gridficha[pos, 3].Text = arregloreporte2[pos].dar_hora_salida()      ' Hora Salida    
+        gridficha[pos, 4].Text = arregloreporte2[pos].dar_horas_trabajadas() ' Horas Laboradas  
+        gridficha[pos, 5].Text = codger            ' Lugar que  pertenece
+        gridficha[pos, 6].Text = arregloreporte2[pos].dar_lugar()  'Lugar Laborado' 
+     Next    
+    If x = 0 Then Message.Info("Sin resultados.")
+     rehacer_reporte_cedula_btn.Enabled = True
+     rehacer_reporte_cedula_btn.Visible = True      
+  End If ' text buttons llenos
+End
+'' Permite colocar la fecha en un text box directamente de 
+'' un Datechooser, da la fecha de manera precisa ahorrando tiempo
+'' y dolores de cabeza... lo muestra en pantalla asi dd/mm/yyyy
+
+Public Sub fecha_ing_lugar_txt_KeyPress()
+  almana_tab1.Visible = True
+  fecha_ing_lugar_txt.text = ""
+End
+'' Permite colocar la fecha en un text box directamente de 
+'' un Datechooser, da la fecha de manera precisa ahorrando tiempo
+'' y dolores de cabeza... lo muestra en pantalla asi dd/mm/yyyy
+
+Public Sub fecha_ing_cedula_txt_KeyPress()
+  
+  fecha_ing_cedula_txt.text = ""
+  almana_tab2.Visible = True
+  
+  
+End
+'' Este procedimiento permite validar la entrada del 
+'' text box que guardará la cédula. Solo caracteres alfanúmericos
+
+Public Sub cedula_text_KeyPress()
+  ' validar la entrada a alfanumerico nada mas
+  
+  If Not IsDigit(cedula_text.text) Then cedula_text.text = ""
+  If Len(cedula_text.text) < 1 Then cedula_text.text = ""
+  
+End
+'' Este procedimiento permite validar la entrada del 
+'' text box que guardará el código del lugar. Solo caracteres alfanúmericos
+
+Public Sub lugar_text_KeyPress()
+  ' validar entrada a alfanumerico nada mas
+  
+  If Not IsDigit(lugar_text.text) Then lugar_text.text = ""
+  If Len(lugar_text.text) < 1 Then lugar_text.text = ""
+  
+End
+'' Este procedimiento permite Borrar el contenido de la 
+'' primera pestaña, cada text box y el grid.
+
+Public Sub rehacer_reporte_lugar_btn_Click()
+  ' preguntar si los text box estan vacios 
+  
+  Dim o, k As Boolean   
+  Dim res As Integer
+  
+  If Len(fecha_ing_lugar_txt.Text) < 1 Then
+    k = False
+  Else 
+    k = True
+  End If
+  If Len(lugar_text.Text) < 1 Then
+    o = False
+  Else 
+    o = True
+  End If
+  ' si alguno esta vacio no hacer nada...
+  ' hay que uso eficiente y racional de los recursos a la mano.
+  If (o And k) Then
+    If gridlugar.Rows.count > 0 Then 'significa que hay registros en pantalla
+      ' avisar que se va a borrar todo...
+      res = Message.warning("Esto borrará el reporte actual ¿Desea continuar?", "Nuevo Reporte", "Cancelar")
+    Else
+      res = 1
+    End If         
+    If res = 1 Then ' el usuario aceptó y ya se le advirtió no hay vuelta atrás
+      fecha_ing_lugar_txt.Text = " "
+      lugar_text.Text = " "
+      'limpiar los cuadros de texto y el grid para nueva consulta
+      cedu_lbl.visible = False
+      nombrecomp_text.Visible = False
+      nombrecomp_text.text = " "
+      gridlugar.Rows.Count = 0
+      gridlugar.Clear
+      FasisReport.SetFocus()
+      rehacer_reporte_lugar_btn.Enabled = False
+      rehacer_reporte_lugar_btn.Visible = False
+      reporte_lugar_btn.Enabled = True
+      reporte_lugar_btn.Visible = True
+      cedu_lbl.visible = False
+      nombrecomp_text.Visible = False
+      almana_tab1.refresh ' limpiar almanaque
+    Endif ' res
+  End If ' text box vacíos
+  
+End
+'' Este procedimiento permite Borrar el contenido de la 
+'' segunda pestaña, cada text box y el grid.
+
+Public Sub rehacer_reporte_cedula_btn_Click()
+  ' preguntar si los text box estan vacios
+  
+  Dim o, k As Boolean   
+  Dim res As Integer
+  
+  If Len(fecha_ing_cedula_txt.Text) < 1 Then
+    k = False
+  Else 
+    k = True
+  End If
+  If Len(cedula_text.Text) < 1 Then
+    o = False
+  Else 
+    o = True
+  End If
+  ' si alguno esta vacio no hacer nada..
+  If (o And k) Then
+    If gridficha.Rows.count > 0 Then 'si existen registros en pantalla
+      ' avisar que se va a borrar todo...
+      res = Message.warning("Esto borrará el reporte actual ¿Desea continuar?", "Nuevo Reporte", "Cancelar")
+    Else
+      res = 1
+    End If   
+    If res = 1 Then ' el usuario aceptó y ya se le advirtió no hay vuelta atrás
+      fecha_ing_cedula_txt.Text = " "
+      'limpiar los cuadros de texto y el grid para nueva consulta
+      cedula_text.Text = " "
+      gridficha.Rows.Count = 0
+      gridficha.Clear
+      FasisReport.SetFocus()
+      rehacer_reporte_cedula_btn.Enabled = False
+      rehacer_reporte_cedula_btn.Visible = False
+      reporte_cedula_btn.Visible = True
+      reporte_cedula_btn.Enabled = True
+      almana_tab2.Refresh
+    Endif 'res
+  End If ' Text box vacios
+  
+End
+'' Este procedimiento permite que el datechooser NO sea visible
+
+Public Sub fecha_ing_lugar_txt_GotFocus()
+
+  almana_tab1.Visible = True
+  
+End
+'' Este procedimiento permite que el datechooser sea visible
+
+Public Sub fecha_ing_cedula_txt_GotFocus()
+
+  almana_tab2.Visible = True
+
+End
+'' Este procedimiento permite que el datechooser NO sea visible
+
+Public Sub almana_tab1_LostFocus()
+
+  almana_tab1.Visible = False
+
+End
+'' Este procedimiento permite obligar a salir desde el botón de salida
+
+Public Sub Form_Close()
+
+  Message.Info("Para cerrar este programa haga click en el Botón salir.")
+  Stop Event
+
+End
+
+Public Sub Form_Resize()
+  reinicio_tamanos()
+End
+'' renicia la presentación de la ventana que representa el programa
+''  con todos sus elementos en pantalla
+Private Sub reinicio_tamanos()
+  gr.Width = Me.Width - 30
+  gr.Height = Me.Height - gr.Y - 40
+  gr.Refresh
+  'cod_ip.X = gr.Height - 40
+  gridlugar.Width = gr.Width - 20
+  gridlugar.Height = gr.Height - gridlugar.Y - 40
+  gridlugar.Refresh
+  gridficha.Width = gr.Width - 20
+  gridficha.Height = (gr.Height - gridficha.Y) - 40
+  gridficha.Refresh
+  gripcodip.Width = (FasisReport.W - 500)
+  gripcodip.Height = (FasisReport.Height - 200)
+  gripcodip.Refresh
+ End
+
+Public Sub salir_cmd2_Click()
+  
+  Quit
+  
+End
+
+Public Sub salir_cmd3_Click()
+ Quit
+End
+
+Public Sub reporte_ip_x_lugar()
+  Dim cx_pg As Connection ' conector a la bd postgresql
+  Dim pos As Integer      ' permite acceder posiciones en el recordset 
+  Dim rs1 As Result       '  recordset 
+  ' -------------------------------------------------------------------
+  ' conectarse a la base de datos
+    cx_pg = conex_postgres.conectar()
+   ' cargar el cursor con los registros de la tabla
+    rs1 = cx_pg.Find("sysasis_lugar")
+   ' ya se llenó el recordset, configurar la cantidad de filas 
+    gripcodip.Rows.Count = rs1.Count
+    ' mostrar en las columnas los datos que corresponda
+    For pos = 0 To rs1.Count - 1
+      gripcodip[pos, 0].Text = Str(pos + 1)
+      gripcodip[pos, 1].Text = rs1!cod_lugar
+      gripcodip[pos, 2].Text = rs1!cod_ip
+      gripcodip[pos, 3].Text = rs1!des_lugar
+      rs1.MoveNext
+    Next
+ 
+conex_postgres.desconectar(cx_pg)
+cod_lugar.Enabled = False
+cod_ip.Enabled = False
+des_lugar.Enabled = False
+b_sincronizar_ip.Enabled = False
+firstrun = True ' se establece true, se ejecutó una  vez  
+End
+'' Este procedimiento manda a crear un csv desde la Base de Datos Potsgresql
+'' y lo guarda en /tmp
+Public Sub b_actualizar_demonio_Click()
+Dim cx As Connection
+' crear la conexion
+ cx = conex_postgres.conectar()
+ Try cx.Exec("Copy (Select cod_lugar, cod_ip From sysasis_lugar) To  '/tmp/sysasis_codlugar_vs_ip'  WITH CSV HEADER DELIMITER ';' force quote *")
+   If Error Then 
+     Print Error.Text
+     Message.Error("La operación solicitada no puede ser ejecutada.")
+   Else
+     Message.Info("Csv creado en directorio: /tmp/sysasis_codlugar_vs_ip (Servidor Remoto Postgresql).  ")
+   Endif
+conex_postgres.desconectar(cx)
+End
+'' Devuelve el numero de columna en donde usuario haga click
+Public Sub gripcodip_RowClick(Row As Integer)
+  cod_lugar.Text = gripcodip[Row, 1].Text
+  cod_ip.Text = gripcodip[Row, 2].Text
+  des_lugar.Text = gripcodip[Row, 3].Text
+  cod_lugar.Enabled = False
+  cod_ip.Enabled = True
+  des_lugar.Enabled = True
+  rr = Row 'guardar este valor para uso posterior 
+   text_lbl_ip_info.Text = Str(Row + 1)
+End
+'' Permite editar el contenido del grid, usando lo cuadros de texto 
+'' del tercer reporte. 
+'' Avisa  que el cambio también se guardará en la base de datos Postgres
+''           SE ASUME QUE QUIEN LO EDITA SABE LO QUE HACE
+Public Sub b_sincronizar_ip_Click()
+Dim resp As Integer
+ Print cod_lugar.Text
+ Print cod_ip.Text
+  ' preguntar si el cambio va a la base de datos
+  resp = Message.Warning("Los datos en la Base de Datos serán alterados ¿ Continuar ?", "Si", "No")
+   If resp = 1 Then 
+     ' hay que actualizar los datos a la bd   
+     ' NO PUEDE HABER CAMPOS EN BLANCO
+      actualizar_a_bd(cod_lugar.Text)
+   End If
+ b_sincronizar_ip.Enabled = False
+cod_ip.Enabled = True
+des_lugar.Enabled = True
+End
+'' Actualiza la base de datos con los valores editados del grid
+'' 
+Public Sub actualizar_a_bd(lugar As String)
+ Dim cx_pg As Connection ' conector a la bd postgresql
+  Dim pos As Integer      ' permite acceder posiciones en el recordset 
+  Dim rs1 As Result       '  recordset 
+  ' -------------------------------------------------------------------
+  ' conectarse a la base de datos
+  cx_pg = conex_postgres.conectar()
+  ' iniciar transacciones con la bd
+  cx_pg.Begin
+   rs1 = cx_pg.Edit("sysasis_lugar", "cod_lugar =&1", lugar)   
+  If rs1.Available Then ' si existe el lugar
+    rs1!cod_lugar = gripcodip[pos, 1].Text ' este valor no debe ser alterado
+     rs1!cod_ip = gripcodip[pos, 2].Text  
+     rs1!des_lugar = gripcodip[pos, 3].Text  
+    rs1.Update ' actualizar recorset   
+    cx_pg.Commit ' hacer el cambio en la base de datos
+  Endif
+conex_postgres.desconectar(cx_pg)
+End   
+
+
+
+Public Sub cod_ip_KeyPress()
+ 
+
+ If Key.code = Key.Return Then 
+    refrescar_ip()
+   End If    
+End 
+
+Public Sub des_lugar_KeyPress()
+ 
+Dim Row As Integer
+Row = rr
+  If Key.code = Key.Return Then 
+    refrescar_lugar()  
+ End If
+End 
+Public Sub des_lugar_LostFocus()
+refrescar_lugar()
+End
+
+Public Sub cod_ip_LostFocus()
+refrescar_ip()
+End
+
+Public Sub refrescar_lugar()
+Dim cad1, cad2 As String
+Dim igual As Integer 
+Dim Row As Integer
+Row = rr
+' asignar lo que contenga el cuadro de texto a cad1
+   cad1 = des_lugar.Text
+ ' asignar lo que contenga el grid en la posicion dada a cad2
+   cad2 = gripcodip[Row, 3].Text
+   Print cad1
+   Print cad2
+ ' efectuar comparacion entre el lugar escrito en el cuadro de texto
+  ' y el mostrado en el grid 
+  igual = Comp(cad1, cad2, 0)
+  If igual <> 0 Then
+   ' se modificó este valor, reflejarlo en el grid    
+    gripcodip[Row, 3].Text = des_lugar.Text
+    b_sincronizar_ip.Enabled = True
+    des_lugar.Enabled = False
+   End If
+End
+
+
+
+Public Sub refrescar_ip()
+Dim cad1, cad2 As String
+Dim igual As Integer 
+Dim Row As Integer
+ Row = rr
+  ' asignar lo que contenga el cuadro de texto a cad1
+   cad1 = cod_ip.Text
+ ' asignar lo que contenga el grid en la posicion dada a cad2
+   cad2 = gripcodip[Row, 2].Text
+ ' efectuar comparacion entre la dirección ip escrita en el cuadro de texto
+ ' y la mostrada en el grid 
+  Print cad1
+  Print cad2
+  igual = Comp(cad1, cad2, 0) 
+  If igual <> 0 Then
+   ' se modificó este valor, reflejarlo en el grid     
+     gripcodip[Row, 2].Text = cod_ip.Text
+     b_sincronizar_ip.Enabled = True
+     cod_ip.Enabled = False
+  End If
+End
+
+Public Sub acerca_de_btn_Click()
+  desarrollador.Show 'ir al formulario del desarrollador
+ 
+End

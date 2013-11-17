@@ -1,0 +1,14 @@
+# Gambas Project File 3.0
+# Compiled with Gambas 3.4.0
+Title=Reporte
+Startup=FMain
+Version=4.0.0
+Component=gb.image
+Component=gb.gui
+Component=gb.form
+Component=gb.db
+Component=gb.db.postgresql
+Description="Reportes de del personal de una emprese determinada \n\n1.- Asistencia  por fecha y lugar laborado \n2.- Asistencia de un empleado dada su cédula y su ubicación\n\nImporta los datos desde Base de Datos en Postgresql (Remota)\no desde una base de Datos Sqlite (Local)"
+Authors="Tyrone Lucero"
+TabSize=2
+Packager=1

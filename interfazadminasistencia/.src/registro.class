@@ -1,0 +1,47 @@
+' Gambas class file
+
+'' Definición de la clase registro
+''  contiene datos de un empleado 
+''  Atributos:
+' clase registro
+Private $hora_e As String   ' Hora Entrada   
+Private $hora_d As String   ' Hora Descanso  
+Private $hora_r As String   ' Hora Retorno   
+Private $hora_s As String   ' Hora Salida   
+Private $horas_t As String   ' Horas Laboradas    
+Private $lugar As String    'Lugar que  pertenece
+Private $nom_comp As String    ' nombres y apellidos
+ ' aqui se crea la clase... constructor 
+Public Sub _new(hora_e As String, hora_d As String, hora_r As String, hora_s As String, horas_t As String, lugar As String, nom_comp As String)   
+  $hora_e = hora_e  
+  $hora_d = hora_d
+  $hora_r = hora_r
+  $hora_s = hora_s 
+  $horas_t = horas_t   
+  $lugar = lugar
+  $nom_comp = nom_comp
+End
+' métodos get
+Public Sub dar_hora_entrada() As String
+  Return $hora_e
+End  
+Public Sub dar_hora_descanso() As String
+  Return $hora_d
+End
+Public Sub dar_hora_retorno() As String
+  Return $hora_r
+End  
+Public Sub dar_hora_salida() As String
+  Return $hora_s
+End 
+Public Sub dar_horas_trabajadas() As String
+  Return $horas_t
+End 
+Public Sub dar_lugar() As String
+  Return $lugar
+End 
+Public Sub dar_nombre_completo() As String
+  Return $nom_comp
+End 
+' no he agregado mas metodos
+' 

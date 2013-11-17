@@ -1,0 +1,31 @@
+# Gambas Form File 3.0
+
+{ Form Form
+  Move(0,0,639,234)
+  #Scaled = False
+  Text = ("Solicitud contraseña")
+  Resizable = False
+  { frm2_info_lbl Label
+    Move(90,9,441,63)
+    Font = Font["17"]
+    Text = ("    Control de Acceso al Programa Reportes")
+  }
+  { Label1 Label
+    Move(0,63,243,90)
+    Font = Font["14"]
+    Text = ("  Introduzca su Contraseña:")
+  }
+  { Confirmar_cmd Button
+    Move(99,162,108,45)
+    Text = ("Confirmar")
+  }
+  { frm2_salir_cmd Button
+    Move(405,162,117,45)
+    Text = ("Salir")
+  }
+  { verificar_text TextBox
+    Move(252,81,351,45)
+    Password = True
+    MaxLength = 60
+  }
+}

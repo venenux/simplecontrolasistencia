@@ -1,0 +1,51 @@
+' Gambas module file
+
+ Private conector As Connection
+
+'' Esta función devuelve un objeto connection, es decir, 
+'' una conexion abierta y disponible a la BD Postgresql
+Public Sub conectar() As Connection
+ ' Información de la base de datos
+  conector = New Connection 'creamos la instancia de la conexion
+  conector.Type = "postgresql"
+  conector.Name = "sysasistencia"
+  conector.host = "37.10.254.20"
+  conector.Port = 5432        ' este valor NUNCA VA A CAMBIAR
+  conector.User = "admindbpg" ' SI  este usuario hay que cambiarlo
+  conector.Password = ""      ' por supuesto esto tambien seŕa modificado 
+  Try conector.Open 'se hace esto para intentar abrir la bd
+  Wait 1 'EMULANDO UN ERROR Y ACTUANDO EN CONSECUENCIA 
+  If Error Then ' si da error es porque la bd no existe
+        Print "Error al conectar: \"" & Error.Code & " " & Error.Text & "\"; reintentando"
+        conector.Close  ' se hace una manipulacion macabra 
+        Wait 1
+        conector.Type = "postgresql"
+        conector.host = "37.10.254.20"
+        conector.Port = 5432
+        conector.User = "admindbpg"
+        conector.Password = ""
+        conector.Name = "" ' no decimos aun el nombre/archivo de la db, la creamos si no existe
+        Try conector.Open
+        Wait 1          ' dejamos espacio a la operacion I/O si se arranco a cambio de dia justico
+        If Error Then  'Si no existe la B.D. la creamos"
+            Print "Error al conectar: \"" & Error.Code & " " & Error.Text & "\"; nada mas que hacer"
+            conector.Close ' pero INTENTA CREAR LA BD AUNQUE NO TENGA TABLAS
+            Return Null
+        Else
+          conector.Close
+          Return Null
+        Endif
+    Else
+        Return conector ' no hubo problema 
+        'se  nota que hay demasiada latencia... 
+        'pero es por la integridad de la BD
+  Endif
+End  
+'' Esta función corta la conexión entre el objeto connection y  la BD 
+Public Sub desconectar(conector As Connection)
+    If Not conector == Null Then
+       conector.Close
+    Endif
+ conector = Null 
+End
+

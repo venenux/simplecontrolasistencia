@@ -1,0 +1,10 @@
+# Gambas Connection File 3.0
+[Connection]
+Type="postgresql"
+Host="37.10.254.20"
+Port="5432"
+User="admindbpg"
+RememberPassword=False
+IgnoreCharset=False
+Database="sysasistencia"
+
