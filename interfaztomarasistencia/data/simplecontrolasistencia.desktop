@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Icon=user-desktop
+Name=SimpleControlAsistencia
+Comment=Simple control de asistencia y acceso
+Categories=Application;Utility;
+Exec=simplecontrolasistencia
+StartupNotify=true
+Terminal=false
+NotShowIn=GNOME;

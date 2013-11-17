@@ -4,10 +4,11 @@ Public tiempodado As Long
 Public ubicacion As Long
 Private confirmacion As Long
 
-'' establece el codigo de confirmacion para poder enrolar
+'' establece el codigo de confirmacion para poder enlistar o enviar archivo
 Public Function setConfirmacioncode(code As Long)
     confirmacion = code
 End
+'' obtiene el codigo de confirmacion para poder ejecutar acciones
 Public Function getConfirmacioncode() As Long
     Return confirmacion
 End
@@ -24,7 +25,7 @@ Public Sub btnenviar_Click()
     FMain.inputid = inputid.Text
 
     If Trim(inputcodigo.Text) == "" Then
-        Message.Error("Ingrese su identificacion (usuario de la mensageria)")
+        Message.Error("Ingrese el codigo dinamico (generado con estos datos)")
         inputcodigo.SetFocus
     Else
         FMain.inputcodigo = inputcodigo.Text
@@ -42,3 +43,15 @@ Public Sub btncancel_Click()
     Me.Close(True)
 
 End
+
+Public Sub Form_Open()
+
+    Me.TopOnly = True
+    Me.SetFocus
+    labelcodger.Text = FMain.datos.getUbicacionLug()
+    labelhora.Text = Val(Format$(Now, "hh"))
+    labelt.Text = Val(Format$(Now, "mmdd"))
+
+End
+
+

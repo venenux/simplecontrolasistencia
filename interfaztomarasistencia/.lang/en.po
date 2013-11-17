@@ -1,0 +1,92 @@
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2002-11-01 04:27+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: .project:1
+msgid "interfaztomarasistencia"
+msgstr ""
+
+#: .project:2
+msgid "Interfaz de toma y control  de asistencia, autonoma, de propia db y autogestionada.\nCapacidades de control de acceso incluidas"
+msgstr ""
+
+#: FAuth.form:19
+msgid "Para acceder debe comunicarse con sistemas, decir el codigo de lugar (codger), fecha  y hora,con los cuales se proporcionara una clave que ingresara junto un id (identificador) de mensageria o el que le proporcionen"
+msgstr "To access, daily self-generated key must be entered, based on the location (codger), date and time, and the action id."
+
+#: FAuth.form:26
+msgid "Escriba el codigo y su usuario y pulse este boton"
+msgstr ""
+
+#: FAuth.form:27 FMain.form:102
+msgid "Verificar"
+msgstr "Verify"
+
+#: FAuth.form:41
+msgid "id:"
+msgstr ""
+
+#: FAuth.form:47
+msgid "codigo:"
+msgstr ""
+
+#: FAuth.form:53
+msgid "Cancelar"
+msgstr "Cancel"
+
+#: FMain.form:62
+msgid "horario"
+msgstr ""
+
+#: FMain.form:70
+msgid "Escanear , pulse aqui"
+msgstr "Scan, pulse here"
+
+#: FMain.form:77
+msgid "mensageusuario"
+msgstr ""
+
+#: FMain.form:87
+msgid "Ingrese su id/ci en el recuadro en blanco:"
+msgstr "Input id in text box"
+
+#: FMain.form:93
+msgid "Ingrese id aqui"
+msgstr "Input u'r id here"
+
+#: FMain.form:94
+msgid "ingrese identificacion"
+msgstr "Input id"
+
+#: FMain.form:126
+msgid "Bright"
+msgstr ""
+
+#: FMain.form:137
+msgid "Contrast"
+msgstr ""
+
+#: FMain.form:154
+msgid "Whiteness"
+msgstr ""
+
+#: FMain.form:159
+msgid "Hue"
+msgstr ""
+
+#: FMain.form:170
+msgid "Color"
+msgstr ""
+
+#: Mcaptura.module:65
+msgid "Instale una camara valida linux, ademas debe ser solo una, revise la configuracion"
+msgstr "Must install a valid webcam for linux, and must be only one. Check config file values."
+

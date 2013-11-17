@@ -1,39 +1,68 @@
 # Gambas Form File 3.0
 
 { Form Form
-  MoveScaled(0,0,65,38)
+  MoveScaled(0,0,113,46)
+  Icon = Picture["data/venenux.png"]
   { ayudausuario TextLabel
     MoveScaled(3,0,59,27)
     Font = Font["DejaVu Sans Mono,+2"]
-    ToolTip = ("Para entrar a la gestion de enlistamiento de huellas dactilares, ud debe comunicar a sistemas estos datos mostrados, y despues se le proporcionara una clave que ingresara junto su id (identificador o cedula).<br><br> Use el sistema de mensageria escriba a adminejabberd@syscatalogo.homelinux.net")
-    Text = ("Para entrar a la gestion de enlistamiento de huellas dactilares, ud debe comunicar a sistemas estos datos mostrados, y despues se le proporcionara una clave que ingresara junto su id (identificador o cedula).<br><br> Use el sistema de mensageria escriba a adminejabberd@syscatalogo.homelinux.net")
+    ToolTip = ("Para acceder debe comunicarse con sistemas, decir el codigo de lugar (codger), fecha  y hora,con los cuales se proporcionara una clave que ingresara junto un id (identificador) de mensageria o el que le proporcionen")
+    Text = ("Para acceder debe comunicarse con sistemas, decir el codigo de lugar (codger), fecha  y hora,con los cuales se proporcionara una clave que ingresara junto un id (identificador) de mensageria o el que le proporcionen")
     Alignment = Align.Justify
   }
   { btnenviar Button
-    MoveScaled(48,27,14,9)
+    MoveScaled(48,25,14,9)
     ToolTip = ("Escriba el codigo y su usuario y pulse este boton")
-    Text = ("Verificar")
+    Text = ("Confirmar")
   }
   { inputid TextBox
-    MoveScaled(33,27,14,4)
+    MoveScaled(33,25,14,4)
   }
   { inputcodigo TextBox
-    MoveScaled(33,32,14,4)
+    MoveScaled(33,30,14,4)
     Password = True
   }
   { labelid Label
-    MoveScaled(25,28,7,3)
+    MoveScaled(24,25,8,4)
     Text = ("id:")
     Alignment = Align.Right
   }
   { labelcode Label
-    MoveScaled(25,32,7,3)
+    MoveScaled(24,30,8,4)
     Text = ("codigo:")
     Alignment = Align.Right
   }
   { btncancel Button
-    MoveScaled(3,32,14,4)
+    MoveScaled(48,35,14,4)
     Text = ("Cancelar")
     Cancel = True
+  }
+  { labelcodger Label
+    MoveScaled(13,25,13,4)
+    Text = ("labelcodger")
+  }
+  { labelhora Label
+    MoveScaled(13,30,10,4)
+    Text = ("labelhora")
+  }
+  { labelt Label
+    MoveScaled(13,35,6,4)
+    Text = ("labelt")
+  }
+  { Label1 Label
+    MoveScaled(4,25,9,4)
+    Text = ("Codger:")
+  }
+  { Label2 Label
+    MoveScaled(4,30,9,4)
+    Text = ("Tiempo:")
+  }
+  { Label3 Label
+    MoveScaled(4,35,8,4)
+    Text = ("Dinami:")
+  }
+  { PictureBox1 PictureBox
+    MoveScaled(67,4,53,39)
+    Picture = Picture["data/fingerlogo.jpg"]
   }
 }

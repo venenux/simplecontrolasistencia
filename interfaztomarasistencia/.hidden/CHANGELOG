@@ -1,0 +1,46 @@
+* Thu Sep 19 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com> 1.3.1
+- * FIX: mensages ajustados al momento de la accion
+- * FIX: aumento del tiempo de mensage, escaneo y rectificado
+- * FIX: ajuste de acciones cerrar,enrolar, notificacion de codger/tempo
+- * BUGFIX: mata el escaner antes de volver verificar un usuario
+- * BUGFIX: limpia la cache de imagenes antes de mostrarla
+- * TODO: pendiente aun apagar el escaner antes y despues de usarlo/invocarlo
+
+* Tue Sep 17 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com> 1.3.0
+- * NEW: soporte de escaners de codigo de barras (asume EAN-13 el tipo de codigo)
+- * NEW: autodeteccion de id, minimo 8 digitos autocompletado con ceros, en db
+- * NEW: configuracion de ejecucion para la aplicacion, bordeless, ontop, fullscreen
+- * BUGFIX: capacidad control de acceso mejorada, ahora registra invitados
+- * BUGFIX: mostrar fotos y huellas solo si han sido tomadas y existen
+- * BUGFIX: pide huella de id que ya tenga una registrada, sino, el id es invitado
+
+* Fri Sep 13 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com> 1.2.1
+- * NEW: pide clave para cerrar la aplicacion
+- * NEW: obtiene foco, se centra y se pone de primero al iniciar
+- * BUGFIX: centra foco si lo pierde despues de unos segundos
+- * BUGFIX: detiene eventos inputs si esta verificando o mostrando mensage
+- * TODO: rota la sincronizacion por archivo
+- * BUGFIX: en modo emulado, registra todo acceso, meno el que no tiene huella listo
+
+* Fri Sep 13 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com> 1.2.0
+- * NEW: comportamiento cambia, ahora toma base de dato anterior en vez archivo csv
+- * NEW: registra accesos de invitados si no estan en nomina, pero si estan y no hay huella, no
+- * BUGFIX: error al verificar si existia ruta foto o data en writehistory
+- * BUGFIX: no intenta rescatrar la foto o huella si no se tiro ninguna en modo emulado
+- * BUGFIX: pero si estan y no hay huella no lo hace
+- * BUGFIX: en modo emulado, registra todo acceso, meno el que no tiene huella (*, no probado)
+- * TODO: rota la sincronizacion por archivo
+- * TODO: pendiente perdida de foco en archivo, pulsameinto de teclas no permitidas
+- * TODO: pendiente perdida de control de la aplicacion, cierre inesperado por externo
+
+* Mon Aug 19 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com> 1.1.0
+-* test para 1.1.0 con administracion de enrolado
+
+* Mon Jul 22 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com> 1.0.1
+- * finalizado version 1.0.1 version final ya para produccion,
+- * asume existira una BD con todo listo, sino toma resgistros de un listado CSV,
+- por ende el servicio nodo todos los dias debe tener y colocar una DB en el home
+
+* Mon Jun 10 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com> 1.0.0
+- * Lanzamiento inicial
+

@@ -43,6 +43,7 @@ Private iscamerapresente As Boolean ' variable que indicara que hay una camara u
 Private isscanerpresente As Boolean ' variable que indicara que hay un escaner de dedos, si false, posible este en modo emulado
 
 Private isemuladoactivo As Boolean  ' si no hay escaner presente, modo emulado poner en true
+Private istsincamactivo As Boolean  ' si no hay camara presente, modo dummy y no intentar tomar fotos
 
 Public mcaptura_emu As Boolean      ' semaforo, o indicador si al no haber dispositivo entra en modo emulado (igual que isscanerpresente)
 Public est_app_asis As Integer      ' semaforo, o interrupcion de salud del modulo, 0 listo, 1 se va invocar, 2 en pleno uso/verificando, 3 malo no hay backend
@@ -63,14 +64,15 @@ Public Sub funcionando_camara()
         FMain.datos.setStatusCamara(False)
         Message.Error(("Instale una camara valida linux, ademas debe ser solo una, revise la configuracion"))
         est_app_asis = 5 ' sin camara o camara mal asignada... 
+        istsincamactivo = False
         Return
     Endif
 
-    hWebCam.Bright = 40
-    hWebCam.Contrast = 140
-    hWebCam.Whiteness = 100
-    hWebCam.Hue = 50
-    hWebCam.Color = 110
+    hWebCam.Bright = 100
+    hWebCam.Contrast = 240
+    hWebCam.Whiteness = 150
+    hWebCam.Hue = 0
+    hWebCam.Color = 60
 
     tamanovideo = Split(FMain.datos.getCamaraSize(), "x")  ' de  la config leo una liena XXXxYYY ypico el string numerico en la x minuscula
     If tamanovideo.Max == 1 Then
@@ -146,6 +148,7 @@ Public Sub funcionando_escaner()
     Else
         If Comp(LineasProcesamiento[1], "0063", 1) == 0 Then
             setModoEmulado(True)
+            Shell " mkdir -p " & User.Home &/ LineasProcesamiento[3]    ' si es summy crear la base
         Else
             setModoEmulado(False)
         Endif
@@ -158,6 +161,7 @@ Public Sub funcionando_escaner()
 
 End
 
+'' verifica si el escaner sigue siendo el mismo que se detecto al arrancar la aplicacion o la ultima vez se uso, y si esta bueno
 Public Sub verificar_escaner() As Boolean
     
     Dim resultado_backend As String ' usado para obtener una config desde el programa backend
@@ -189,6 +193,14 @@ Public Sub verificar_escaner() As Boolean
         est_app_asis = 0
         Return itsModoEmulado()
     Endif
+End
+
+
+'' verifica que el nodo de asistencia (servicio) este activo y funcionando, deveulve el ip del nodo segun config, sino el por defecto
+Public Sub verificar_nodo() As String
+    
+    
+    
 End
 
 
@@ -271,9 +283,11 @@ Public Sub scan_dedo_rostro(usuario As String, Optional dedo As Integer = 1, Opt
     FMain.img_dedo_mostrar.Show
     
     ' tiramos una fotico de la cara que pone el esclavo.. err digo trabajador
+    If getCamera() <> Null Then
     getCamera().Save(ruta_img_foto)
-    ' cargamos la fotico del rostro en el GUI interfaz grafica al usuario
     FMain.img_cara_mostrar.Picture = Picture[ruta_img_foto]
+    Endif
+    ' cargamos la fotico del rostro en el GUI interfaz grafica al usuario
     FMain.img_cara_mostrar.Show
     FMain.img_video_mostrar.Visible = False
     ' gestionamos hacia base de datos
@@ -327,7 +341,8 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
 
     ' mandamos a pedir la ruta al backend, y la guardamos en una variable, alli trabajaremos
     Shell scanerdedocmd & " path interfaz 2>&1" To ruta ' nuestro backend esta hecho para que devuelva solo una linea
-
+    
+    Shell "mkdir -p " & ruta
     ' armo la ruta y el ubicacion de la foto, pa mostrasela, auqnue leonardo se queje, y sea grotesco
     ruta_img_huella = User.Home & "/" & ruta & name_img_huella
     ruta_img_foto = User.Home & "/" & ruta & name_img_foto
@@ -343,13 +358,20 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
     hconn = dbmanagdat.getConeccionDB()
     ' TODO la funcion dbmanagdat.sys_verify_user(usuario, "1") rescata lso datos, en binaryo blob de base64, necesito saber como guardarlos
     Print " salvando " & ruta_data_dactilar
-    dbmanagdat.sys_verify_user(usuario, ruta_data_dactilar)
     FMain.mensageusuario.Text = "Verificando " & usuario
+    FMain.mensageusuario.Enabled = True
+    dbmanagdat.sys_verify_user(usuario, ruta_data_dactilar) ' exista o no huella, se ejecutara
     FMain.inputficha.Hide
-    datos = dbmanagdat.sys_search_user(usuario, Null)
+    datos = dbmanagdat.sys_search_user(usuario, 0) ' si no existe usuario, devuelve vacios o nulos
     FMain.mensageusuario.Text = "ID invalido: el id/cedula ingresado no es valido.<br>Verifique e ingrese de nuevo o consulte su jefe inmediato.<br> Si su huella no haya sido registrada, pida sea registrada."
     If Not IsNull(datos) Then
-        FMain.mensageusuario.Text = usuario & ": " & datos[0] & "," & datos[1]
+        If Not (Comp(datos[1], "Invitado", 1) == 0) Then
+            FMain.mensageusuario.Text = "Sr(a), " & datos[1] & ", <br><br>COLOQUE SU DEDO EN EL ESCANER justo DESPUES DE ESTAR ENCENDIDO para certificar su identidad"
+            FMain.mensageusuario.Show
+            FMain.panelidverificar.Hide
+            Wait 1
+        Endif
+        Shell "sleep 7 && killall " & scanerdedocmd & " & " 
         Print scanerdedocmd & " interfaz verify finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1"
         Shell scanerdedocmd & " interfaz verify finger " & dedo & " image " & ruta_img_huella & scanerdummycmd & " 2>&1" To resultado_backend
         Print resultado_backend
@@ -366,29 +388,52 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
         ' verificamos "true" de dactilar, esto sucede sea emulado o no el modo del backend
         verificado = LineasProcesamiento[3]
         ' cargamos los datos del usuario enrolado
-        If itsModoEmulado() == False Then
-            ' verificamos ya halla sido enrolado
-            If Val(verificado) > -1 Then
-                ' rescatamos y vemos la ruta de donde esta la data del dedo
-                ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
-                ' cargamos la fotico del dedo en el GUI interfaz grafica al usuario
-                FMain.img_dedo_mostrar.Picture = Picture[ruta_img_huella]
+        If LineasProcesamiento.Count > 4 Then
+            ' si no tengo 5 elementos no tengo salida == 0 o salida == 1
+            If itsModoEmulado() == False Then
+                If Exist(ruta_img_huella) Then
+                    FMain.img_dedo_mostrar.Picture = Picture[ruta_img_huella]
+                Endif
+                If Val(verificado) > -1 And datos[2] <> "998" And datos[1] == "Invitado" Then
+                    ruta_data_dactilar = User.Home & "/" & LineasProcesamiento[2]
+                Else
+                    If datos[2] == "998" And datos[1] == "Invitado" Then
+                        verificado = -6
+                    Endif
+                Endif
             Endif
+        Else
+            ' TODO aqui poner logistica matar y liberar el escaner
+            Shell scanerdedocmd & " path interfaz 2>&1" To ruta ' nuestro backend esta hecho para que devuelva solo una linea
+            ' no puso el dedo en el escaner, notificamos y mostramos el mensage
+            FMain.mensageusuario.Text = "Sr(a), " & datos[1] & ", por favor, VUELVA A INTENTARLO COLOCANDO SU DEDO EN EL ESCANER para certificar su identidad"
+            FMain.mensageusuario.Show
         Endif
         ' informamos de si fue enrolado/verificado correctamente por el backend
-        If Val(verificado) > -1 Then
-            FMain.datos.setStatusVerificado(LineasProcesamiento[3])
-        Else
-            FMain.datos.setStatusVerificado(True)
+        If LineasProcesamiento.Count > 4 Then
+            If Val(verificado) > -1 Then
+                FMain.datos.setStatusVerificado(LineasProcesamiento[3])
+            Else
+                FMain.datos.setStatusVerificado(True)
+                If verificado == "-6" Then
+                    verificado = "TRUE"
+                Endif
+            Endif
         Endif
-        ' operacion exitosa, mostramos la foto pero no permitimos pulsar boton hasta que vea su huella
-        FMain.img_dedo_mostrar.Show
         ' tiramos una fotico de la cara que pone el esclavo.. err digo trabajador
-        If FMain.datos.itsAndandoCamara() == True Then
-            getCamera().Save(ruta_img_foto)
-            FMain.img_cara_mostrar.Picture = Picture[ruta_img_foto]
+        If itsCameEmulado() == False Then
+            If FMain.datos.itsAndandoCamara() == True Then
+                FMain.img_cara_mostrar.Refresh
+                getCamera().Save(ruta_img_foto)
+            Endif
+            If Exist(ruta_img_foto) Then
+                FMain.img_cara_mostrar.Picture = Picture[ruta_img_foto]
+            Else
+                FMain.img_cara_mostrar.Picture = Null
+            Endif
         Endif
-        ' cargamos la fotico del rostro en el GUI interfaz grafica al usuario
+        ' cargamos imagenes respectivas de los registrado
+        FMain.img_dedo_mostrar.Show
         FMain.img_cara_mostrar.Show
         FMain.img_video_mostrar.Visible = False
     Else
@@ -399,32 +444,42 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
 
     ' gestionamos hacia base de datos
     If verificado == "TRUE" Then
-        textcommon = "Sr(a) " & datos[0] & "," & datos[1]
+        If Not IsNull(datos) Then
+            If (Comp(datos[1], "Invitado", 1) == 0) Then
+                textcommon = "Sr(a), Saludos, no lo he ubicado (o no esta aun) en nomina.<br><br>Invitado"
+            Else
+                textcommon = "Sr(a) " & datos[0] & "," & datos[1]
+            Endif
+        Else
+            textcommon = "Sr(a), Saludos, dado no lo he ubicado en nomina, se creara registros de invitado:"
+        Endif
             dbmanagdat = New DBmandat
             resultado_dbmanat = dbmanagdat.sys_writehistory_user(usuario, datos[2], Format$(Now, "hh"), Format$(Now, "nn"), ruta_img_foto, ruta_data_dactilar, ruta_img_foto)
             If resultado_dbmanat > 4 Or resultado_dbmanat < 0 Then
                 FMain.mensageusuario.Text = textcommon & ", Ud ya marco el final de su dia laboral. No se le crearan mas registros de asistencias en adelante"
             Else
                 If resultado_dbmanat == 1 Or resultado_dbmanat == 3 Then
-                    FMain.mensageusuario.Text = textcommon & ", Incorporacion registrada."
+                    FMain.mensageusuario.Text = textcommon & ", Ingreso registrado."
                 Endif
                 If resultado_dbmanat == 2 Then
-                    FMain.mensageusuario.Text = textcommon & ", Salida de descanso registrada."
+                    FMain.mensageusuario.Text = textcommon & ", Salida o Descanso registrada."
                 Endif
                 If resultado_dbmanat == 4 Then
                     FMain.mensageusuario.Text = textcommon & ", Salida laboral final registrada."
                 Endif
             Endif
             If Val(verificado) > -1 And resultado_dbmanat < 0 Then
-                FMain.mensageusuario.Text = "Ud no esta registrado en ninguna instancia de la organizacion u/o empresa."
+                FMain.mensageusuario.Text = "No ha sido actualizado, no esta registrado en la nomina (aun) o no esta listado (aun)"
             Endif
     Endif
     If verificado == "FALSE" Then
-        FMain.mensageusuario.Text = "Verificacion incorrecta: " & datos[1] & ", coloque el CENTRO de la yema del dedo que enrolo, ningun otro, la punta le la UÑA toque/arriba el borde superior. La IMAGEN debe RESULTAR EN UN REMOLINO DE LINEAS."
+        FMain.mensageusuario.Text = "Incorrecto: " & datos[1] & ".<br><br>Coloque el DEDO QUE REGISTRO sobre el capta huella:<br>* Realize LEVE PRESION firmemente.<br>* La yema debe colocarse completa.<br>"
     Endif
     FMain.mensageusuario.Show
-    If Val(verificado) == -5 Then
-        FMain.mensageusuario.Text = "Ud no ha sido enrolado aun, favor pida sea registrada su huella dactilar a su jefe inmmediato o en sistemas."
+    If LineasProcesamiento.Count > 4 Then
+        If Val(verificado) == -5 Then
+            FMain.mensageusuario.Text = "Ud esta en nomina, pero no ha registrado su huella dactilar aun\n, favor comuniquese con su jefe inmediato en RRHH o con Sistemas"
+        Endif
     Endif
     'un print de log alli y listo
     Print "proceso de enrolado termino con resultqado : " & verificado
@@ -468,4 +523,8 @@ End
 '' notifica y verifica si se tiene escaner o esta en modo emulado
 Public Sub itsModoEmulado() As Boolean
     Return isemuladoactivo
+End
+
+Public Sub itsCameEmulado() As Boolean
+    Return istsincamactivo
 End

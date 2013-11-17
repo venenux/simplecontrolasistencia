@@ -1,7 +1,9 @@
 ' Gambas class file
 
 Private horaalescanear As Date
+Private horaalperderfo As Date
 Private mensageinput As String
+Private usandoseinput As Boolean
 Public datos As DData
 Public fauth As FAuth
 Public inputcodigo As String
@@ -14,13 +16,20 @@ Public Sub Form_Open()
     Dim tiempodiario As Long
     Dim numeroubica As Long
     Me.center           ' centramos el aplicativo
+    Me.Window.SetFocus
+    Me.TopOnly = True
+    Me.Border = False
+    'Me.FullScreen = False
     mensageinput = "Ingrese id"
+    usandoseinput = False
+    inputficha.SetFocus
     Me.datos = New DData
     Me.datos = Mset.prepararporconfiguracion()  ' leer la configuracion, que camara, que modo, que db, etc
     tiempodiario = Val(Format$(Now, "mmddhh"))
-    numeroubica = Val(Me.datos.getUbicacionGer())
+    numeroubica = Val(Me.datos.getUbicacionLug())
     Print "Sistema de Asistencia: Interfaz arrancada con tiempo dinamico en: " & tiempodiario & " " & numeroubica
     clave = numeroubica * tiempodiario
+    Me.datos.setClavePart1(tiempodiario)
     Me.datos.setClaveAdminEnrolado(clave)    ' confogura la clave de administracion y enrolado
     Me.datos.setUsuarioActual("ninguno")
     Mcaptura.est_app_asis = 0   ' cada funcion abajo coloca est_app_asis en 0 si exitoso, sino 3,4,5 en fallo
@@ -38,8 +47,9 @@ Public Sub iniciarInterfaz()
     Dim dbmanagdat As DBmandat
     img_video_mostrar.Visible = True
     ' inicializacion de variables y entorno de captura, asi como de muestra
-    inputficha.Text = mensageinput      ' en el input, coloco que ingrese un id cedula o ficha
+    inputficha.Text = ""
     mensageusuario.Hide                 ' no muestro ninguna notificacion al usuario, la app esta en espera de uno
+    cameracontrols.Hide
     img_dedo_mostrar.Hide               ' escondo el area de imagen de dedo ya que la app esta en espera de uno
     img_cara_mostrar.Hide               ' escondo el area de foto del usuario ya que no hay usuario aun
     img_video_mostrar.Hide              ' no muestro video alguno, no se aun si hay camara web
@@ -51,7 +61,7 @@ Public Sub iniciarInterfaz()
     
     If dbmanagdat.isConected() == True Then
         Me.datos.setDbLocalLista(True)
-        estatus = dbmanagdat.syncronizar(Me.datos.itsListaCompresa(), Me.datos.getUbicacion(), Me.datos.getArchivoConsolidado())  ' syncronizar crea todas las tablas necesarias, poblando todo, listado, enrolado y registros
+        estatus = dbmanagdat.syncronizar(Me.datos.itsListaCompresa(), Me.datos.getUbicacionLug(), Me.datos.getArchivoConsolidado())  ' syncronizar crea todas las tablas necesarias, poblando todo, listado, enrolado y registros
         If estatus == -1 Then
             dbmanagdat.closeConnection
             Quit                        ' si iniciando el listado no se encuentra ningun archivo, la aplicacion sale
@@ -77,23 +87,26 @@ End
 
 '' Esta funcion es importante, se dispara en "Mcaptura.scan_dedo_imagen()"
 Public Sub tiempotranscurrido_imagenes_Timer()
-    Print "Proceso de escaneo iniciado, vigilando... "
     ' en lo que arranca nuestro temporizador, excondemos el boton
     btnscanear.Visible = False
     btnscanear.Hide
     inputficha.Hide
-    If DateDiff(horaalescanear, Now, gb.Second) > 5 Then
+    If DateDiff(horaalescanear, Now, gb.Second) > 6 Then
         btnscanear.Visible = True
         btnscanear.Show
         inputficha.Show
         mensageusuario.Hide
         horamostrar.Start
+        img_cara_mostrar.Picture.Flush
+        img_dedo_mostrar.Picture.Flush
         img_cara_mostrar.Refresh    ' redibujado es diferido y se llama en el proximo evento, perfecto para este problema
         img_dedo_mostrar.Refresh    ' redibujado es diferido y se llama en el proximo evento, perfecto para este problema
         img_dedo_mostrar.Hide
         img_cara_mostrar.Hide
+        img_video_mostrar.Refresh
         img_video_mostrar.Show
         img_video_mostrar.Visible = True
+        Mcaptura.est_app_asis = 0
         tiempotranscurrido_imagenes.Stop
         Print "Proceso de escaneo/verificacion finalizado."
         ' FMain.iniciarEscaner
@@ -104,6 +117,7 @@ Public Sub tiempotranscurrido_imagenes_Timer()
         Endif
         panelidverificar.Show
         inputficha.Text = ""
+        inputficha.SetFocus
     Endif
     Print "... estado " & Mcaptura.est_app_asis
 End
@@ -119,25 +133,57 @@ End
 Public Sub horamostrar_Timer()
     horalcd.Text = Format$(Now, "dd/mmmm/yyyy hh:nn:ss")
     horalcd.Refresh
+    ' gestion de perdida de foco, para que el usuario no se pierda
+    If horaalperderfo <> Null Then
+        If DateDiff(horaalperderfo, Now, gb.Second) > 6 Then
+            If Mcaptura.est_app_asis == 1 Then
+                Return
+            Endif
+            If Trim(inputficha.Text) == "" Then 
+                inputficha.SetFocus
+            Endif 
+        Endif
+    Endif
+    If Hour(Now) >= 23 Then
+        If Minute(Now) >= 59 Then
+            If Second(Now) >= 57 Then
+                Sleep 12
+                Print "resincronizando nuevo dia de asistencia  al dia"
+                setHoraAlEscanear
+                horalcd.Text = Format$(Now, "dd/mmmm/yyyy hh:nn:ss")
+                Me.iniciarInterfaz
+                Me.iniciarCamara
+                Me.iniciarEscaner
+                img_video_mostrar.Refresh
+            Endif
+        Endif
+    Endif
 End
 
 Public Sub inputficha_GotFocus()
     inputficha.Text = ""
 End
 
+
+Public Sub inputficha_LostFocus()
+    horaalperderfo = Now
+End
+
+
 '' al activasrse, llama el evento de escaneo,
 '' tomando desde la instancia de datos, el usuario,
 '' y deteniendo la hora para que se muestre cuando se escaneo
 Public Sub btnscanear_Click()
-    
     fauth = New FAuth
-    
+    If Mcaptura.est_app_asis == 1
+        Return
+    Endif
     ' inputficha.SetFocus
     If inputficha.Text == mensageinput Or Trim(inputficha.Text) == "" Then
         Message.Info(mensageinput)
         Return
     Else
-        If fauth.ShowModal() Or Not inputcodigo Or Not inputid Then 
+        If fauth.ShowModal() Or Not inputcodigo Or Not inputid Then
             Return
         Else
             If inputcodigo == datos.getClaveAdminEnrolado() Then
@@ -159,30 +205,80 @@ Public Sub pintarvideo_Timer()
 End
 
 Public Sub img_video_mostrar_Draw()
-
     Dim hPict As Picture
-
     hPict = Mcaptura.getCamera().Image.Picture
     'Try PictureBox1.Picture = hWebCam.Picture
     Draw.Begin(img_video_mostrar)
     Draw.Picture(hPict, (Me.img_video_mostrar.W - hPict.W) \ 2, (Me.img_video_mostrar.H - hPict.H) \ 2)
     Draw.End
-
     pintarvideo.Enabled = True
-
 End
 
 Public Sub btnverificar_Click()
-    inputficha.SetFocus
+    Print "... estado " & Mcaptura.est_app_asis
+    If Mcaptura.est_app_asis == 1
+        Return      ' si aun estoy en el proceso de verificacion, no permito acciones aun
+    Endif
     If inputficha.Text == mensageinput Or Trim(inputficha.Text) == "" Then
-        Message.Info(mensageinput)
+        Message.Info(mensageinput)  ' notifico que debe ingresar un id
+        Return      ' retorno el control ya que no ha cumplido las reglas
+    Else
+        Me.datos.setUsuarioActual(inputficha.Text)  ' configuro el id a verificar
+        horamostrar.Stop            ' se detiene la hora para que el usuario vea su hora
+        Mcaptura.est_app_asis = 1   ' se marca semaforo de estado
+        btnscanear.Hide             ' no se admite cambiar el input, se esta verificando
+        btnscanear.Visible = False  ' ni darle varias veces, pues ya se le dio
+        Mcaptura.verif_dedo_rostro(Me.datos.getUsuarioActual(), 1)  ' ejecutar el proceso de verificacion
+    Endif
+End
+
+Public Sub btnsincronizar_Click()
+    fauth = New FAuth
+    If fauth.ShowModal() Or Not inputcodigo Or Not inputid Then 
         Return
     Else
-        Me.datos.setUsuarioActual(inputficha.Text)
-        horamostrar.Stop
         Mcaptura.est_app_asis = 1
         btnscanear.Hide
         btnscanear.Visible = False
-        Mcaptura.verif_dedo_rostro(Me.datos.getUsuarioActual(), 1)
+        btnverificar.Hide
+        btnverificar.Visible = False
+        'Mcaptura.verificar_nodo(Me.datos.getHostOP, filename)
+        Message.Info("Esta accion esta siendo vigilada y videograbada por el departamento yugo Systemas.")
+    Endif
+End
+
+
+'' antes de cerrar la aplicacion/forma, se verifica clave, sino se obvia la accion
+Public Sub Form_Close()
+    fauth = New FAuth
+    If fauth.ShowModal() Or Not inputcodigo Then
+        Stop Event
+    Else
+        If inputcodigo == datos.getClaveAdminEnrolado() Then
+            Print "saliendo correctamente"
+            Message.Info("Esta accion esta siendo vigilada y videograbada por el departamento yugo Systemas.")
+            Quit
+        Else
+            Message.Error("Clave diaria incorrecta, El programa solo se detendra con clave. Esta accion esta siendo videograbada.")
+            Return
+        Endif
+    Endif
+End
+
+'' al presionar cualquier tecla, si aun esta verificando se anula la accion
+Public Sub Form_KeyPress()
+    If Mcaptura.est_app_asis == 1 Then
+        Stop Event
+    Endif
+End
+
+
+'' al ingresar id, se verifica si fue realizado por un lector de barras (aun falta mas aqui)
+Public Sub inputficha_KeyPress()
+    Dim barcodemax As Integer = 13
+    Dim inputidmax As Integer = 13
+    inputidmax = Len(inputficha.Text)
+    If inputidmax >= 15 Then
+        btnverificar_Click
     Endif
 End

@@ -2,127 +2,89 @@
 
 Public Sub prepararporconfiguracion() As DData
     
-    Dim messageinfo As String = ""                                  ' mensage completo de todos los detalles no encontrados al arrancar
+    Dim ubino As Integer = 0, codgno As Integer = 0, camno As Integer = 0
+    Dim messageinfo As String = ""
     
-    Dim configuracion As Settings                                   ' abstraccion de la configuracion completa
+    Dim configuracion As Settings 
     
-    Dim datos As New DData                                          ' abstraccion de la data completa
+    Dim datos As New DData
     
-    Dim ubino As Integer = 0, codgno As Integer = 0, camno As Integer = 0   ' codigos de estado de error para mensages anidados en vez de varios
-    
-    Dim dc_mv As String = "modalidad/verificado", dc_me As String = "modalidad/enrolado"
-    Dim dc_ma As String = "modalidad/acceso", dc_mm As String = "modalidad/modo"
-    Dim dc_dd As String = "dispositivo/camara", dc_ds As String = "dispositivo/tamano"
-    Dim dc_lm As String = "localidad/ubicacion", dc_lu As String = "localidad/codger"
-    Dim dc_oc As String = "origenes/compresa", dc_ct As String = "conexion/tipo"
-    Dim dc_oo As String = "origenes/op", dc_ot As String = "origenes/tipo"
-    
-    Dim localidad_maquina As String = "999"                         ' localidad de ubicacion de la maquina que ejecuta, desconocido por defecto
-    Dim localidad_usuario As String = "998"                         ' localidad de ubicacion de el usuario que ejecuta, invitado por defecto
-    Dim archivo_configuracion As String = ".asistenciatomar.conf"
-    Dim dato_configurar As String = archivo_configuracion           ' dato que se esta configurando al momento, elprimero obvio seria de doinde se toman
-    Dim camera_device As String = "/dev/video0"                     ' dispositivo linux de la camara a usar por defecto
-    Dim camera_size As String = "320x200"                           ' tamano de video a usar en camara por defecto
-    Dim origenes_op As String = "37.10.254.80"                      ' origen y destino de los datos de asistencia por defecto
-    Dim origenes_compresa As String = "bzlib2"                      ' tipo de compresion por defecto, lrz en el futuro
-    Dim origenes_tipo As String = "csv"                             ' tipo de archivo de datos en caso de no existir db origen al dia
-    Dim modalidad_enrolado As String = "activacion"                 ' modo enrolado por defecto, activacion o directo son las opciones
-    Dim modalidad_verificado As String = "dedoycara"                ' modo verificado por defecto, dedo, cara y dedoycara son las opciones
-    Dim modalidad_acceso As String = "valido"                       ' modalidad de acceso o registro, auto o valido solo los de nomina registran asistencia
-    Dim modalidad_modo As String = "auto"                           ' modalidad de ejecucion de sincronizado/aplicacion
-    Dim conexion_tipo As String = "sqlite3"                         ' coneccion empleada para db embebida, sqlite y berkerlydb
-    
-    ' esto solo funciona en entorno de desarrollo, cuando se lanza desde la ide
-    If Not Exist(User.Home &/ archivo_configuracion) Then
-        Try Copy archivo_configuracion To User.Home &/ archivo_configuracion
+    ' esto solo funciona en entorno de desarrollo, cuanedo se lanza desde la ide
+    If Not Exist(User.Home &/ ".asistenciatomar.conf") Then
+        Try Copy "asistenciatomar.conf" To User.Home &/ ".asistenciatomar.conf"
     Endif
-    ' en cualquier caso, eso solo es en desarrollo, en produccion, creara un archivo nuevo vacio
-    configuracion = New Settings(user.Home &/ archivo_configuracion)
     
-    dato_configurar = dc_dd
-    If IsNull(configuracion[dato_configurar, Null]) Then
+    ' en cualquier caso, esto solo es en desarrollo, en produccion, creara un archivo nuevo vacio
+    configuracion = New Settings(user.Home & "/.asistenciatomar.conf")
+    
+    If IsNull(configuracion["dispositivo/camara", Null]) Then
         camno = 1
-        datos.setCamaraDev(camera_device)
+        datos.setCamaraDev("/dev/video0")
     Else
-        datos.setCamaraDev(configuracion[dato_configurar])
+        datos.setCamaraDev(configuracion["dispositivo/camara"])
     End If  
     
-    dato_configurar = dc_ds
-    If IsNull(configuracion[dato_configurar, Null]) Then
+    If IsNull(configuracion["dispositivo/tamano", Null]) Then
         Print "Tamano de camara no definido, usando por defecto minimo 320x240"
-        datos.setCamaraSize(camera_size)
+        datos.setCamaraSize("320x240")
     Else
-        datos.setCamaraSize(configuracion[dato_configurar])
-    End If
-
-    dato_configurar = dc_ct
-    If IsNull(configuracion[dato_configurar, Null]) Then
-        Print "No definida conexion local en archivo configuracion"
-        datos.setContipoLo(conexion_tipo)
-    Else
-        datos.setContipoLo(configuracion[dato_configurar])
+        datos.setCamaraSize(configuracion["dispositivo/tamano"])
     End If  
 
-    dato_configurar = dc_oo
-    If IsNull(configuracion[dato_configurar, Null]) Then
-        Print "No definida conexion remota en archivo configuracion"
-        datos.setHostOP(origenes_op)
+    If IsNull(configuracion["conexion/tipo", Null]) Then
+        Print "No definida conexcion local en archivo configuracion"
+        datos.setContipoLo("sqlite3")
     Else
-        datos.setHostOP(configuracion[dato_configurar])
+        datos.setContipoLo(configuracion["conexion/tipo"])
+    End If  
+
+    If IsNull(configuracion["origenes/op", Null]) Then
+        Print "Origen OP no definido, usando devel por defecto"
+        datos.setHostOP("37.10.254.20")
+    Else
+        datos.setHostOP(configuracion["origenes/op"])
     End If  
     
-    dato_configurar = dc_ot
-    If IsNull(configuracion[dato_configurar, Null]) Then
-        Print "No definido tipo de sincronismo, en archivo configuracion, usando csv"
-        datos.setContipoOp(origenes_tipo)
+    If IsNull(configuracion["origenes/tipo", Null]) Then
+        Print "No definido tipo de sincronismo, usando archivo csv"
+        datos.setContipoOp("csv")
     Else
-        datos.setContipoOp(configuracion[dato_configurar])
+        datos.setContipoOp(configuracion["origenes/tipo"])
     End If  
     
-    dato_configurar = dc_oc
-    If IsNull(configuracion[dato_configurar, Null]) Then
+    If IsNull(configuracion["origenes/compresa", Null]) Then
         Print "Compresion/cryto no definido, usandose y asumiendose por defecto"
-        datos.setListaCompresa(origenes_compresa)
+        datos.setListaCompresa("bzlib2")
     Else
-        datos.setListaCompresa(configuracion[dato_configurar])
+        datos.setListaCompresa(configuracion["origenes/compresa"])
     End If  
     
-    dato_configurar = dc_me
-    If IsNull(configuracion[dato_configurar, Null]) Then
+    If IsNull(configuracion["modalidad/enrolado", Null]) Then
        Print "Enrolado indirecto aprovacion por nomina usandose, no se definio en configuracon"
-        datos.setModoDirecto(modalidad_enrolado)
+        datos.setModoDirecto("activacion")
     Else
-        datos.setModoDirecto(configuracion[dato_configurar])
+        datos.setModoDirecto(configuracion["modalidad/enrolado"])
     End If  
     
-    dato_configurar = dc_mv
-    If IsNull(configuracion[dato_configurar, Null]) Then
+    If IsNull(configuracion["modalidad/verificado", Null]) Then
        Print "Verificado de dedoy cara usandose, no definido en configuracion"
-        datos.setModoVerificado(modalidad_verificado)
+        datos.setModoVerificado("dedoycara")
     Else
-        datos.setModoVerificado(configuracion[dato_configurar])
+        datos.setModoVerificado(configuracion["modalidad/verificado"])
     End If  
     
-    dato_configurar = dc_lm
-    If IsNull(configuracion[dato_configurar, Null]) Then
+    If IsNull(configuracion["localidad/ubicacion", Null]) Then
         ubino = 1
-        datos.setUbicacionLug(localidad_maquina)
+        datos.setUbicacionLug("990")
     Else 
-        datos.setUbicacionLug(configuracion[dato_configurar])
+        datos.setUbicacionLug(configuracion["localidad/ubicacion"])
     Endif 
     
-    ' dato_configurar = dc_mm
-    ' If IsNull(configuracion[dato_configurar, Null]) Then
-    '     datos.setModoApp(modalidad_modo)
-    ' Else 
-    '     datos.setModoApp(configuracion[dato_configurar])
-    ' Endif 
-    
-    dato_configurar = dc_ma
-    If IsNull(configuracion[dato_configurar, Null]) Then
-        datos.setModoAcceso(modalidad_acceso)
+    If IsNull(configuracion["localidad/codger", Null]) Then
+        codgno = 1
+        datos.setUbicacionUsr("999")
     Else 
-        datos.setModoAcceso(configuracion[dato_configurar])
+        datos.setUbicacionUsr(configuracion["localidad/codger"])
     Endif 
     
     If codgno == 1 Or camno == 1 Or ubino == 1 Then
@@ -134,14 +96,17 @@ Public Sub prepararporconfiguracion() As DData
             messageinfo = messageinfo & "\n* Ubicacion no definida en el archivo de configuracion"
         Endif
         If codgno == 1 Then
-            messageinfo = messageinfo & "\n* Codigo(s) de ubicacion(es) no definidos (importante)"
+            messageinfo = messageinfo & "\n* Codigo de ubicacion no definida en el archivo de configuracion"
         Endif
         Message.Info(messageinfo)
     Endif
     
-    dato_configurar = Null
-    configuracion = Null
-    messageinfo = Null
+'     #enrolado can be "directo" Or "activacion"
+' enrolado = "directo"
+' #verificado can be "dedo", "cara or " dedoycara ""
+' verificado = "dedoycara"
+' #modo can be "demo", "auto" Or "connodo", the "connodo" need a post5gresql DB working ina valid ip
+' modo = "auto"
     Return datos
     
 End
