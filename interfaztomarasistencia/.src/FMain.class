@@ -12,9 +12,6 @@ Public inputid As String
 
 Public Sub Form_Open()
 
-    Dim clave As String
-    Dim tiempodiario As Long
-    Dim numeroubica As Long
     Me.center           ' centramos el aplicativo
     Me.Window.SetFocus
     Me.TopOnly = True
@@ -25,40 +22,51 @@ Public Sub Form_Open()
     inputficha.SetFocus
     Me.datos = New DData
     Me.datos = Mset.prepararporconfiguracion()  ' leer la configuracion, que camara, que modo, que db, etc
-    tiempodiario = Val(Format$(Now, "mmddhh"))
-    numeroubica = Val(Me.datos.getUbicacionLug())
-    Print "Sistema de Asistencia: Interfaz arrancada con tiempo dinamico en: " & tiempodiario & " " & numeroubica
-    clave = numeroubica * tiempodiario
-    Me.datos.setClavePart1(tiempodiario)
-    Me.datos.setClaveAdminEnrolado(clave)    ' confogura la clave de administracion y enrolado
     Me.datos.setUsuarioActual("ninguno")
     Mcaptura.est_app_asis = 0   ' cada funcion abajo coloca est_app_asis en 0 si exitoso, sino 3,4,5 en fallo
+    mantenerClave       ' preparar el calculo de claves inicial, en cada segundo se llama este proceso
+    iniciarServicios    ' inicia y configura sincronizacion y replicado de las Base de Datos internas
     iniciarInterfaz     ' inicia y coloca orden en el grafico que ve el usuario, esconde mensages y pide id
     iniciarEscaner      ' inicia y verifica el backend, el escaner y ve si hay uno, sino emula uno, par pedir camara
     iniciarCamara       ' inicia y preprara la camara de video para empezar tomar fotos de los usuarios/trabajadores
-    Print "clave: " & Me.datos.getClaveAdminEnrolado()
+    Print "Sistema de Asistencia: Interfaz arrancada en: " & Me.datos.getClavePart1() & " " & Me.datos.getUbicacionLug()
 
 End
+
+'' prepara la clave segun la hora en curso al invocarse este proceso, NOTA, depende de que exista una DDAta y configuracion lista
+Public Sub mantenerClave()
+    Dim tiempodiario As Long, numeroubica As Long, clave As String
+    tiempodiario = Val(Format$(Now, "mmddhh"))
+    numeroubica = Val(Me.datos.getUbicacionLug())
+    clave = numeroubica * tiempodiario
+    Me.datos.setClavePart1(tiempodiario)
+    Me.datos.setClaveAdminEnrolado(clave)    ' confogura la clave de administracion y enrolado
+End
+
+'' este proceso inicia y/o prepara los servicios de replicado y sincronismo
+Public Sub iniciarServicios()
+    MSinc.startRsyncRegistrerNode()
+End
+
 
 '' este proceso inicia y/o prepara la apariencia en el modo normal (sin hacer nada)
 Public Sub iniciarInterfaz()
 
     Dim estatus As Integer
     Dim dbmanagdat As DBmandat
-    img_video_mostrar.Visible = True
-    ' inicializacion de variables y entorno de captura, asi como de muestra
-    inputficha.Text = ""
+    img_video_mostrar.Visible = True    ' inicializacion de entorno de captura, asi como de muestra
+    inputficha.Text = ""                ' inicializar la variable de ingreso de identificacion (ficha)
     mensageusuario.Hide                 ' no muestro ninguna notificacion al usuario, la app esta en espera de uno
     cameracontrols.Hide
     img_dedo_mostrar.Hide               ' escondo el area de imagen de dedo ya que la app esta en espera de uno
     img_cara_mostrar.Hide               ' escondo el area de foto del usuario ya que no hay usuario aun
     img_video_mostrar.Hide              ' no muestro video alguno, no se aun si hay camara web
     tiempotranscurrido_imagenes.Stop    ' detengo el vigilador de proceso de asistencia (verificacion/enrolado)
-    horamostrar.Start                   ' interfaz preparada, arranca el horario de trabajo
+    horamostrar.Start                   ' tengo interfaz? arranca el horario de trabajo
 
-    dbmanagdat = New DBmandat
-    dbmanagdat.getConeccionDB()
-    
+    MSinc.obtainRsyncCentralNode("")      ' obtengo una DB desde la central, preparada, si falla no problem, la conexcion creara una
+    dbmanagdat = New DBmandat           ' instancio una base de datos
+    dbmanagdat.getConeccionDB()         ' al obtener su conexion, se regenera si es necesaria
     If dbmanagdat.isConected() == True Then
         Me.datos.setDbLocalLista(True)
         estatus = dbmanagdat.syncronizar(Me.datos.itsListaCompresa(), Me.datos.getUbicacionLug(), Me.datos.getArchivoConsolidado())  ' syncronizar crea todas las tablas necesarias, poblando todo, listado, enrolado y registros
@@ -67,57 +75,71 @@ Public Sub iniciarInterfaz()
             Quit                        ' si iniciando el listado no se encuentra ningun archivo, la aplicacion sale
         Endif
     Endif
-    
-    '' una app grafica es un hilo realmente, asi que en cada ciclo verifico el estado del modulo de captura
-    Print "La interfaz asistencia iniciada, vigilando modulo captura en estado " & Mcaptura.est_app_asis & ", usuario actual: " & datos.getUsuarioActual()
+    Print "interfaz preparada, vigilando modulo captura en estado " & Mcaptura.est_app_asis & ", usuario actual: " & datos.getUsuarioActual()
 
 End
 
 '' proceso que prepara el dispositivo de escanedo dactilar, establece un semaforo para saber cuando esta disponible
 Public Sub iniciarEscaner()
     Mcaptura.funcionando_escaner()
-    panelidverificar.Show
+    panelidverificar.Show               ' el input del id, con el boton estan en un panel..
 End
 
 '' proceso que enciende la camara, segun la config y las propiedades establecidas
 Public Sub iniciarCamara()
     Mcaptura.funcionando_camara()
-    img_video_mostrar.Show
+    img_video_mostrar.Show              ' despues de iniciar la camara muestro su viedo
 End
 
 '' Esta funcion es importante, se dispara en "Mcaptura.scan_dedo_imagen()"
 Public Sub tiempotranscurrido_imagenes_Timer()
-    ' en lo que arranca nuestro temporizador, excondemos el boton
-    btnscanear.Visible = False
+    ' en lo que arranca nuestro temporizador, excondemos lo normal
     btnscanear.Hide
+    btnscanear.Visible = False
     inputficha.Hide
-    If DateDiff(horaalescanear, Now, gb.Second) > 6 Then
-        btnscanear.Visible = True
+    inputficha.Visible = False
+    panelidverificar.Hide
+    panelidverificar.Visible = False
+    img_video_mostrar.Show
+    img_video_mostrar.Visible = False
+    ' y empezamos mostrar la informacion de captura e identificacion
+    img_dedo_mostrar.Show
+    img_dedo_mostrar.Visible = True
+    img_dedo_mostrar.Refresh
+    img_cara_mostrar.Show
+    img_cara_mostrar.Visible = True
+    img_cara_mostrar.Refresh
+    ' apenas pasen 5 a 6 segundos retorno todo a como estaba antes
+    If DateDiff(horaalescanear, Now, gb.Second) > 5 Then
         btnscanear.Show
+        btnscanear.Visible = True
         inputficha.Show
-        mensageusuario.Hide
-        horamostrar.Start
-        img_cara_mostrar.Picture.Flush
-        img_dedo_mostrar.Picture.Flush
-        img_cara_mostrar.Refresh    ' redibujado es diferido y se llama en el proximo evento, perfecto para este problema
-        img_dedo_mostrar.Refresh    ' redibujado es diferido y se llama en el proximo evento, perfecto para este problema
-        img_dedo_mostrar.Hide
-        img_cara_mostrar.Hide
-        img_video_mostrar.Refresh
+        inputficha.Visible = True
+        panelidverificar.Show
+        panelidverificar.Visible = True
         img_video_mostrar.Show
         img_video_mostrar.Visible = True
-        Mcaptura.est_app_asis = 0
-        tiempotranscurrido_imagenes.Stop
-        Print "Proceso de escaneo/verificacion finalizado."
-        ' FMain.iniciarEscaner
-        ' FMain.iniciarCamara
-        If Not IsNull(img_cara_mostrar.Picture) Then
+        If Not IsNull(img_cara_mostrar.Picture) Then    ' la imagen se debe vaciar
             img_cara_mostrar.Picture.Flush
             img_cara_mostrar.Picture.Clear
         Endif
-        panelidverificar.Show
+        If Not IsNull(img_dedo_mostrar.Picture) Then    ' la imagen se debe vaciar
+            img_dedo_mostrar.Picture.Flush
+            img_dedo_mostrar.Picture.Clear
+        Endif
+        img_dedo_mostrar.Hide
+        img_dedo_mostrar.Visible = False
+        img_dedo_mostrar.Refresh
+        img_cara_mostrar.Hide
+        img_cara_mostrar.Visible = False
+        img_cara_mostrar.Refresh
+        Print "Proceso de escaneo/verificacion finalizado."
+        Mcaptura.est_app_asis = 0
+        mensageusuario.Hide
+        horamostrar.Start
         inputficha.Text = ""
         inputficha.SetFocus
+        tiempotranscurrido_imagenes.Stop    ' el temporizador se detiene de ultimo, d¡no deeria ser dentro, pero bueh, funciona
     Endif
     Print "... estado " & Mcaptura.est_app_asis
 End
@@ -131,11 +153,14 @@ End
 
 '' muestra fecha y hora en el formulario principal, al iniciarse
 Public Sub horamostrar_Timer()
+    ' cada segundo que pase, pinto la hora, y la fecha
     horalcd.Text = Format$(Now, "dd/mmmm/yyyy hh:nn:ss")
     horalcd.Refresh
-    ' gestion de perdida de foco, para que el usuario no se pierda
+    ' y debo mantener la clave al dia, esto implica calculo extra de ciclos de cpu TODO mejorar
+    mantenerClave
+    ' gestion de perdida de foco, despues de 4 segundos, vuelve a inputficha
     If horaalperderfo <> Null Then
-        If DateDiff(horaalperderfo, Now, gb.Second) > 6 Then
+        If DateDiff(horaalperderfo, Now, gb.Second) > 4 Then
             If Mcaptura.est_app_asis == 1 Then
                 Return
             Endif
@@ -144,6 +169,7 @@ Public Sub horamostrar_Timer()
             Endif 
         Endif
     Endif
+    ' gestion de reinicio nuevo dia, reinicia todo y nueva DB al terminar un dia
     If Hour(Now) >= 23 Then
         If Minute(Now) >= 59 Then
             If Second(Now) >= 57 Then
@@ -151,10 +177,15 @@ Public Sub horamostrar_Timer()
                 Print "resincronizando nuevo dia de asistencia  al dia"
                 setHoraAlEscanear
                 horalcd.Text = Format$(Now, "dd/mmmm/yyyy hh:nn:ss")
+                ' If Not IsNull(Mcaptura.hWebcam) Then
+                '     Mcaptura.hWebcam.Close
+                ' Endif
                 Me.iniciarInterfaz
                 Me.iniciarCamara
                 Me.iniciarEscaner
                 img_video_mostrar.Refresh
+                img_cara_mostrar.Refresh
+                img_dedo_mostrar.Refresh
             Endif
         Endif
     Endif
@@ -207,7 +238,6 @@ End
 Public Sub img_video_mostrar_Draw()
     Dim hPict As Picture
     hPict = Mcaptura.getCamera().Image.Picture
-    'Try PictureBox1.Picture = hWebCam.Picture
     Draw.Begin(img_video_mostrar)
     Draw.Picture(hPict, (Me.img_video_mostrar.W - hPict.W) \ 2, (Me.img_video_mostrar.H - hPict.H) \ 2)
     Draw.End
@@ -242,7 +272,7 @@ Public Sub btnsincronizar_Click()
         btnscanear.Visible = False
         btnverificar.Hide
         btnverificar.Visible = False
-        'Mcaptura.verificar_nodo(Me.datos.getHostOP, filename)
+        MSinc.obtainRsyncCentralNode("")
         Message.Info("Esta accion esta siendo vigilada y videograbada por el departamento yugo Systemas.")
     Endif
 End
@@ -257,12 +287,14 @@ Public Sub Form_Close()
         If inputcodigo == datos.getClaveAdminEnrolado() Then
             Print "saliendo correctamente"
             Message.Info("Esta accion esta siendo vigilada y videograbada por el departamento yugo Systemas.")
+            Mcaptura.getCamera().Close
             Quit
         Else
             Message.Error("Clave diaria incorrecta, El programa solo se detendra con clave. Esta accion esta siendo videograbada.")
             Return
         Endif
     Endif
+    Catch
 End
 
 '' al presionar cualquier tecla, si aun esta verificando se anula la accion
@@ -281,4 +313,10 @@ Public Sub inputficha_KeyPress()
     If inputidmax >= 15 Then
         btnverificar_Click
     Endif
+End
+
+Public Sub btnenviocentral_Click()
+
+    MSinc.obtainRsyncCentralNode("")
+
 End

@@ -2,13 +2,20 @@
 DBCon=[12]
 
 [Breakpoints]
-Count=0
+Breakpoint[1]="DBmandat.126"
+Breakpoint[2]="DBmandat.473"
+Breakpoint[3]="DBmandat.510"
+Breakpoint[4]="MSinc.89"
+Breakpoint[5]="MSinc.94"
+Breakpoint[6]="MSinc.139"
+Count=6
 
 [DebugWindow]
-Count=0
+Count=1
+DebugWindow[1]="procesos"
 
 [DebugWindow/LineasProcesamiento]
-Geometry=[292,163,180,180]
+Geometry=[559,426,180,180]
 
 [DebugWindow/datos]
 Geometry=[294,409,270,270]
@@ -17,7 +24,13 @@ Geometry=[294,409,270,270]
 Geometry=[0,28,180,180]
 
 [DebugWindow/hconn]
-Geometry=[85,56,1003,314]
+Geometry=[-87,104,1003,314]
+
+[DebugWindow/hconn.Databases]
+Geometry=[-51,79,1003,314]
+
+[DebugWindow/hconn.Tables]
+Geometry=[-55,397,1003,314]
 
 [DebugWindow/hres]
 Geometry=[345,116,518,541]
@@ -25,11 +38,14 @@ Geometry=[345,116,518,541]
 [DebugWindow/hres.Fields]
 Geometry=[357,128,518,541]
 
+[DebugWindow/procesos]
+Geometry=[838,330,954,240]
+
 [DebugWindow/wtable]
-Geometry=[208,68,760,221]
+Geometry=[242,389,760,240]
 
 [DebugWindow/wtable.Fields]
-Geometry=[220,80,760,221]
+Geometry=[258,405,760,240]
 
 [FExportData]
 FieldNames=True
@@ -41,13 +57,22 @@ Delim=";"
 Escape="\""
 
 [OpenFile]
-Count=0
+File[1]=".src/DData.class:203.0"
+File[2]=".src/Mcaptura.module:57.9"
+File[3]=".src/DBmandat.class:510.13"
+File[4]=".src/FMain.class:269.30"
+File[5]=".src/FMain.form"
+Active=6
+File[6]=".src/MSinc.module:90.12"
+Count=6
 
 [Watches]
-Count=5
+Count=7
 Watch[1]="Error"
 Watch[2]="Error.text"
 Watch[3]="Error.Code"
 Watch[4]="wtable!existe"
 Watch[5]="hres!existe"
+Watch[6]="mensageusuario"
+Watch[7]="commando_daemon_stop"
 

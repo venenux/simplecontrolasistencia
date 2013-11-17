@@ -1,0 +1,251 @@
+' Gambas module file
+
+' 
+' 37.10.254.20/proyectos/proyectos/projects/sistemasasistencia/wiki/Servicioasistencia
+' 
+' modulo de sincronizacion, 
+' 
+' IMPORTANTE, ete archivo debe ser igual al que esta en el servidor.
+' 
+' transamrit.net/docs/rsync/
+' www.jveweb.net/en/archives/2011/01/running-rsync-as-a-daemon.html
+' 
+' 
+
+Private preserve_times As String = " -t"        ' * preservar las fechas del archivo original
+Private preserve_perms As String = " -p"        ' * preservar permisos del archivo original
+Private preserve_group As String = " -g"        ' * preservar grupo comun del archivo original
+Private ejecutar_detal As String = " -v"        ' * ejecutar detallado, para revision de fallos
+Private ejecutar_compr As String = " -z"        ' * ejecutar envios comprimidos en la red
+Private progreso_mostr As String = " --progress" ' mostrar progreso de cada archivo si va por red
+Private progreso_parci As String = " --partial" ' dejar el archivo si no se completo
+Private deleteon_desti As String = " --delete"  ' borrar archivos en el destino (no recomendado)
+Private limitebw_ejecu As String = 10           ' opcion para limitar trafico
+Private portserv_numbr As Integer = 4538        ' numero del puerto por defecto al que se conectar u/o correra el demonio
+
+Private filelock_daemo As String = "/tmp/simpleasisrsyncd.lock"
+Private fileopid_daemo As String = "/tmp/simpleasisrsyncd.pid"
+Private namefile_secre As String = ".simpleasisrsyncd.secrets" 
+Private namefile_confi As String = ".simpleasisrsyncd.conf" 
+Private namefile_loggi As String = ".simpleasisrsyncd.log" 
+Private pathfile_files As String = User.Home & "/"
+
+Private executab_rsync As String = "rsync"      ' nombre commando ejecutable rsync
+Private commando_rsync As String = "/usr/bin/" & executab_rsync ' commando a correr rsync
+Private commando_daemon_start As String
+Private commando_daemon_stop As String
+Private configured_por As String = " --port=" & portserv_numbr
+Private configured_lbw As String = " --bwlimit=" & limitebw_ejecu
+
+Private configurado As Boolean = False      ' semaforo de configuracion
+
+'' Esta función determina si existe permiso de lectura en la ruta dada 
+'' devuelve True si hay permiso de lectura
+'' devuelve False  si no hay permiso de lectura
+Public Function ComprobarAccesoLectura(ruta As String) As Boolean
+  Return Access(ruta, gb.Read)
+Catch
+    Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+    Return False
+End
+
+'' Esta función determina si existe permiso de escritura en la ruta dada 
+'' devuelve True si hay permiso de escritura
+'' devuelve False  si no hay permiso de escritura
+Public Function ComprobarAccesoEscritura(ruta As String) As Boolean
+  Return Access(ruta, gb.Write)
+Catch
+    Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+    Return False
+End
+
+'' configuracion automatica del puerto si no se pasa un numero, default 4538
+Public Function confRsyncPort(Optional port As Integer = portserv_numbr) As String
+    If port <> portserv_numbr Then
+        configured_por = " --port=" & port
+    Endif
+    Return configured_por ' EN GAMBAS las variables son referenciadas, no problem si la llamo sin parametro
+End
+
+'' configuracion automatica de ancho de banda maximo consumir, default 10 kbps
+Public Function confLimitBW(Optional bw As Integer = 0) As String
+    If bw > 0 Then
+        configured_lbw = " --bwlimit=" & bw
+    Endif
+    Return configured_lbw ' EN GAMBAS las variables son referenciadas, no problem si la llamo sin parametro
+End
+
+'' configuracion automatica de servicios
+Public Sub confDaemons(Optional clave As String = "") As Integer
+    Dim daemo As String = " --daemon"
+    Dim limit As String = confLimitBW()
+    Dim port As String = confRsyncPort()
+    Dim filec As String = " --config=" & pathfile_files & namefile_confi
+    Dim filel As String = " --log-file=" & pathfile_files & namefile_loggi
+    Dim optfi As String = preserve_times & preserve_group & preserve_perms
+    Dim optex As String = ejecutar_detal & ejecutar_compr
+    
+    If Not Exist(commando_rsync) Then
+        commando_rsync = "/usr/local/bin/" & executab_rsync
+    Endif
+    If configurado == False Then
+        madeRsyncConfig()
+        madeRsyncSecres(clave)
+    Endif
+    commando_daemon_start = "/sbin/start-stop-daemon --start --quiet --oknodo  --pidfile " & fileopid_daemo & " --exec " & commando_rsync & " -- " & daemo & port & limit & filec & filel
+    commando_daemon_stop = "/sbin/start-stop-daemon --stop  --quiet --oknodo  --pidfile " & fileopid_daemo & " --exec " & commando_rsync & " --retry 3 -- " & daemo & port & limit & filec & filel
+        ' Debug ("Configurado inicio de servicio usuario: " & commando_daemon_start)
+        ' Debug ("Configurado parada de servicio usuario: " & commando_daemon_stop)
+        Return 0
+    ' Catch
+    '     Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+    '     Return -1
+End
+
+Public Function obtainRsyncCentralNode(filename As String) As Integer
+    
+    Print commando_rsync & " -v --progress --partial " & confRsyncPort() & " " & executab_rsync & "://systemas@37.10.254.85/systemas/" & filename & " /tmp"
+    Message.Error("Por favor especifique un dia a sincronizar\n" & commando_rsync & " -v --progress --partial " & confRsyncPort() & " " & executab_rsync & "://systemas@37.10.254.85/systemas/" & filename & " /tmp")
+    
+End
+
+'   "rsync -r -n -p -g -v --progress --partial -z /home/systemas/Image/ /home/systemas/tyrone/"
+'   "/sbin/start-stop-daemon --start --quiet --oknodo --pidfile /tmp/simpleasisrsyncd.pid --exec  /usr/bin/rsync -- --daemon --bwlimit=10  --port=4538 --config=/home/systemas/rsyncd.conf  --log-file=/home/systemas/simpleasisrsync.log"
+'   "/sbin/start-stop-daemon --stop --quiet --oknodo --retry 5 --pidfile /tmp/simpleasisrsyncd.pid --exec  /usr/bin/rsync"
+
+Public Function startRsyncRegistrerNode() As Integer
+    Dim limit As String = confLimitBW()
+    Dim optfi As String = preserve_times & preserve_group & preserve_perms
+    Dim optex As String = ejecutar_detal & ejecutar_compr
+    Dim respshell As String ' usado para obtener lecturas desde comandos
+    Dim hFile As File       ' abstrancion objeto del archivo pid para ver si hay ejecutando algo
+    Dim wline As String
+    Dim procesos As String[]
+    Dim shlin As Integer
+    
+    Print "Configurando demonios (Ave Maria Purissimaaa!)..."
+    respshell = confDaemons()
+    If Val(respshell) == 0 Then
+        configurado = True
+    Endif
+    Print "Verificando demonios huerfanos impertinentes que matar..."
+    Shell "ps -lxa | grep " & commando_rsync & " 2>&1 " To respshell
+    procesos = Split(respshell, "\n")
+    For shlin = 0 To procesos.length - 1
+        If InStr(wline, "daemon") > 1 Then
+            Message.Info("Se detectaron instancias extras de sincronizacion, se quitaran todas (en lo posible)")
+            Shell "killall " & commando_rsync
+        Endif
+    Next
+    stoptRsyncDaemons()
+    Print "Iniciando servicio de sincronizacion y replicado..."
+    Shell commando_daemon_start 
+    Return 0
+    Catch
+        Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+        Return -1
+End
+
+Public Sub startRsyncDaemons() As Integer
+    confDaemons()
+    Shell commando_daemon_start
+    Return 0
+    Catch
+        Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+        Return -1
+End
+
+Public Sub stoptRsyncDaemons(Optional initial As Boolean = False) As Integer
+    Dim respshell As String ' usado para obtener lecturas desde comandos
+    Dim hFile As File       ' abstrancion objeto del archivo pid para ver si hay ejecutando algo
+    Dim wline As String
+    Dim procesos As String[]
+    Dim shlin As Integer
+    confDaemons()
+    If Exist(fileopid_daemo) Then
+        hFile = Open fileopid_daemo For Read
+        Seek #hFile, 0
+        Line Input #hFile, wline    ' Pid de seguridad verificado, (wline) matandolo por salido
+        Shell commando_daemon_stop 
+        Print "matando demonio extra (en lo posible).. intentando matar " & wline
+        Wait 5                      ' el script tarda un poco y hay que esperar termine el demonio
+        If Exist(fileopid_daemo) Then
+            Exec "kill -9 " & wline
+            Message.Info("Se detectaron instancias extras de sincronizacion, se mataran todas")
+            Exec "rm -f " & fileopid_daemo
+        Endif
+        respshell = 0
+    Else
+        If initial Then
+            respshell = 2
+        Else
+            respshell = 0
+        Endif
+    Endif
+    Return respshell
+    Catch
+        Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+        Return 1
+End
+
+'' Configuracion de archivo config de servicio de sincronizacion. 
+'' Autor: Fenix <tyron.lucero@gmail.com>
+Public Function madeRsyncConfig() As Integer
+    Dim files As String = "     secrets file = " & pathfile_files & namefile_secre
+    Dim filel As String = "lock file = " & filelock_daemo
+    Dim filep As String = "pid file = " & fileopid_daemo
+    Dim filec As String = pathfile_files & namefile_confi
+    Dim f1 As File
+    Dim escrito As Integer = 1
+    If Not Exist(filec) Then
+        Print "Configurando archivo de sincronizacion: " & filec
+    Endif
+    If ComprobarAccesoEscritura(User.home) Then ' si se puede escribir en la ruta, escribe el archivo
+        f1 = Open filec For Write Create    'abrir el archivo para escritura, si no existe se crea, si existe se sobrescribe
+            Print #f1, filel
+            Print #f1, filep
+            Print #f1, ""
+            Print #f1, "[systemas]"
+            Print #f1, "     path = " & User.Home & "/"
+            Print #f1, "     use chroot = false"
+            Print #f1, "     comment = systemas"
+            Print #f1, "     uid = " & User.Id
+            Print #f1, "     gid = " & User.Group
+            Print #f1, "     read only = no"
+            Print #f1, "     list = yes"
+            Print #f1, "     auth users = " & User.Name
+            Print #f1, files
+        Close #f1
+        escrito = 0 ' todo está correcto
+    End If
+    Return escrito
+    Catch
+        Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+        Return 1
+End
+
+'' configuracion de claves para servicio de sincronizacion de asistencia, clave y usuario unico
+Public Function madeRsyncSecres(Optional clave As String = "") As Integer
+    Dim files As String = pathfile_files & namefile_secre
+    Dim f1 As File
+    Dim escrito As Integer = 1
+    If Not Exist(files) Then
+        Print "Configurando archivo de claves con usuario unico: " & files
+    Endif
+    If Comp(Trim(clave), "", gb.IgnoreCase) == 0 Then
+        clave = "systemas"
+    Endif
+    ' verificar si hay se puede escribir en la ruta
+    If ComprobarAccesoEscritura(User.home) Then     'abrir para escritura, si no existe se crea, si existe se sobrescribe
+        f1 = Open files For Write Create
+        Print #f1, User.name & ":" & clave
+        escrito = 0 ' todo está correcto
+        Close #f1
+        Shell "chmod 600 " & files
+    End If
+    configurado = True
+    Return escrito
+    Catch
+        Debug ("ERROR-> [ " & Error.Text & ":" & DConv(Error.Text) & " ] ")
+        Return 1
+End

@@ -18,22 +18,26 @@
 'Fecha Inicio:  10/09/2013
 'Fecha Termino: 20/09/2013 
 'Versión : 2.0.0 
- ''-----------------*****************------------------------
- '-------------------------------------------------
+''-----------------*****************------------------------
+'-------------------------------------------------
 ' Al Modificar este valor aumentan los intentos para introducir la contraseña 
- Private intentos As Integer 
- Private reset As Boolean = True ' Verdadero desde el inicio del programa, 
-                        ' pues  todavia no han dado contraseña incorrecta.  
- Private password As String = "qw" ' clave para entrar al formulario
+Private intentos As Integer 
+Private reset As Boolean = True ' Verdadero desde el inicio del programa, 
+' pues  todavia no han dado contraseña incorrecta.  
+Private password As String = "12345" ' clave para entrar al formulario
 
 Public Sub Form_Open()
+
   Me.Center
   verificar_text.SetFocus
+
 End
 
 Public Sub frm2_salir_cmd_Click()
+
   Me.Close
   Quit
+
 End
 '' Permite confirmar la contraseña que permita acceder 
 '' al formulario de reportes. Lleva cuenta de los intentos
@@ -41,44 +45,45 @@ End
 '' de ellos.
 '' El usuario debe esperar 2 minutos par intentarlo otra vez. 
 ''
+
 Public Sub Confirmar_cmd_Click()
-Dim es_igual As Integer
-' ***** bucle para pedir la contraseña *****
-   If reset = True Then 
-      intentos = 2        
-      ' si reset vale true es porque es la primera vez que muestra el formulario 
-      ' o cuando se debe desbloquear la entrada de datos
-       reset = False 
-    End If 
-   ' hacer la comparacion binaria entre el password y la cadena del text box
-     If intentos > 0 Then
-      es_igual = Comp(password, verificar_text.text, 0)
-      If es_igual = 0 
-         Me.Close
-         FasisReport.Show 'ir al formulario principal   
-      Else
-        message.Warning("Contraseña Incorrecta. Le quedan " & Str(intentos) & " intento(s) mas.")
-        verificar_text.text = "" 
-        intentos = intentos - 1 ' si no es correcto el password, restar intentos
-     End If 
+
+  Dim es_igual As Integer
+  ' ***** bucle para pedir la contraseña *****
+  If reset = True Then 
+    intentos = 2        
+    ' si reset vale true es porque es la primera vez que muestra el formulario 
+    ' o cuando se debe desbloquear la entrada de datos
+    reset = False 
+  End If 
+  ' hacer la comparacion binaria entre el password y la cadena del text box
+  If intentos > 0 Then
+    es_igual = Comp(password, verificar_text.text, 0)
+    If es_igual = 0 Then
+      Me.Close
+      FasisReport.Show 'ir al formulario principal   
+    Else
+      message.Warning("Contraseña Incorrecta. Le quedan " & Str(intentos) & " intento(s) mas.")
+      verificar_text.text = "" 
+      intentos = intentos - 1 ' si no es correcto el password, restar intentos
+    Endif 
   Else
     Message.Error(" Acceso Restringido. La pantalla de acceso quedará bloqueada por 2 minutos.")
-     ' darle oportunidad al Sope de cerrar el cuadro.
-     Wait 0.1
-     verificar_text.text = "" 
-     ' deshabilitar los botones y el cuadro de texto
-     verificar_text.Enabled = False
-     Confirmar_cmd.Enabled = False     
-     ' quedará el programa  esperando los dos minutos, simulando
-     ' que está bloqueado, no se permite entrada de datos ni confirmar  
-          Wait 120 'esperar DOS minutos
-     ' Volver a la normalidad, como si fuese la primera vez que corre
-     ' el formulario.
-     reset = True
-     verificar_text.Enabled = True
-     Confirmar_cmd.Enabled = True   
+    ' darle oportunidad al Sope de cerrar el cuadro.
+    Wait 0.1
+    verificar_text.text = "" 
+    ' deshabilitar los botones y el cuadro de texto
+    verificar_text.Enabled = False
+    Confirmar_cmd.Enabled = False     
+    ' quedará el programa  esperando los dos minutos, simulando
+    ' que está bloqueado, no se permite entrada de datos ni confirmar  
+    Wait 120 'esperar DOS minutos
+    ' Volver a la normalidad, como si fuese la primera vez que corre
+    ' el formulario.
+    reset = True
+    verificar_text.Enabled = True
+    Confirmar_cmd.Enabled = True   
      verificar_text.SetFocus
    End If
 End
-
 

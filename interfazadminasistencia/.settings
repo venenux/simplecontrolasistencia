@@ -79,15 +79,14 @@ Escape="\""
 [OpenFile]
 File[1]=".src/FasisReport.form"
 File[2]=".src/FMain.form"
-File[3]=".src/FMain.class:25.0"
+File[3]=".src/FMain.class:63.3"
 Active=4
-File[4]=".src/FasisReport.class:849.13"
+File[4]=".src/FasisReport.class:165.0"
+Fold[4]=[0,49,128,136,214,232,388,532,540,550,560,570,619,661,668,675,682,689,710,716,720,749,763,777,794,816,824,832,836,840,864]
 File[5]=".src/registro.class:0.19"
 Fold[5]=[0,14,24,27,30,33,36,39,42]
 File[6]=".src/conex_postgres.module:11.32"
-File[7]=".src/Desarrollador.class:18.2"
-File[8]=".src/Desarrollador.form"
-Count=8
+Count=6
 
 [Watches]
 Count=8

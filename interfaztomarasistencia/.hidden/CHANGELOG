@@ -1,3 +1,11 @@
+* Sat Sep 28 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com> 1.4.0
+- * FIX: corregido toma de foto
+- * BUGFIX: corregido reinicio webcam no iiciaba, idle
+- * NEW: configuracion de invitados o modo de control de acceso por archivo
+- * NEW: arranca el demonio de servicio como usaurio , depende de rsync
+
+* Thu Sep 19 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com> 1.3.1
+
 * Thu Sep 19 2013 PICCORO Lenz McKAY <mckaygerhard@gmail.com> 1.3.1
 - * FIX: mensages ajustados al momento de la accion
 - * FIX: aumento del tiempo de mensage, escaneo y rectificado

@@ -15,23 +15,21 @@
 
 Private hconn As Connection     ' objeto de la coneccion de base de datos local (registros o enrolamientos)
 Private pconn As Connection     ' objeto de la coneccion de base de datos remota (sincoronizacion o replicaicon)
-Private hconnpath As String     ' ruta de la base de datos local
 Private hconndbnam As String    ' nombre de la base de datos local
 Private hconnlugar As String = "999"    ' codigo de lugar de la maquina (donde se ejecuta este programa, identificacion)
 Private hconniscon As Boolean   ' estado de el modulo, TRUE si la conecion esta viva y puede usarse
 Private dbexistealdia As Boolean ' si la db existe no es necesario sincronizar
 Private dbexisteantes As Boolean ' si la db es historica, limpiar registros anteriores
 
-
 '' si el id es menor a 8 completa a 8, (por ahora asi, en el futuro, completar hasta un patron)
-Public Sub fixidlen(id As String, Optional digits As Integer = 8, Optional removeAZ As Boolean = True) As String
+Public Sub fixidlen(id As String, Optional digitsid As Integer = 8, Optional removeAZ As Boolean = True) As String
     
     Dim fixcedula As String
     Dim numdigits As Integer
     Dim fixedcedu As String
     Dim charprime As String
     Dim charsegun As String
-
+    
     charprime = Right(id)
     charsegun = Left(id)
     fixcedula = id
@@ -45,24 +43,23 @@ Public Sub fixidlen(id As String, Optional digits As Integer = 8, Optional remov
             fixcedula = fixedcedu
         Endif
         numdigits = Len(fixcedula)
-        If numdigits == 13 Then
+    Endif
+
+        If numdigits == 13 Then ' VEN CI: inicio para corte de id minimo como 8 digitos, id de otros paises deberan usar el escaner con el generador de carnets
             id = fixedcedu
-            ' VEN CI: inicio para corte de id minimo como 8 digitos, id de otros paises deberan usar el escaner con el generador de carnets
             fixcedula = Right(id, 10)
             numdigits = Len(fixcedula)
-            While numdigits > digits 
+            While numdigits > digitsid
                 fixedcedu = Right(fixcedula, -1)
                 numdigits = Len(fixedcedu)
                 fixcedula = fixedcedu
             Wend
             id = fixedcedu
-            ' fin codigo de corte para id minimo de 8 digitos
-        Endif
-    Endif
+        Endif                   ' VEN CI: fin codigo de corte para id minimo de 8 digitos
     
     numdigits = Len(id)
     fixedcedu = id
-    While numdigits < digits
+    While numdigits < digitsid
         fixedcedu = "0" & fixedcedu
         numdigits = Len(fixedcedu)
     Wend
@@ -72,7 +69,7 @@ Public Sub fixidlen(id As String, Optional digits As Integer = 8, Optional remov
     
 End
 
-'' codigo de lugar
+'' configuracin de codigo de lugar
 Public Sub codigoLugar(Optional codger As String = Null) As String
     If codger == Null Then
         Return hconnlugar
@@ -86,74 +83,89 @@ Public Sub codigoLugar(Optional codger As String = Null) As String
     Endif
 End
 
-
-
-'' modulo de apertura y conexcion a la db para guardar las imagenes escaneadas
+'' modulo configuracion, apertura y conexion a la db local emplear
 Public Sub getConeccionDB() As Connection
-
+    
+    Dim dbnamebase As String = ".scanerguidb"
     Dim fechanterior As Integer
     Dim fechaactual As Integer
     Dim dbante As Boolean
     
     fechaactual = Val(Format$(Now, "yyyymmdd"))
     hconn = Null
-    'hconnpath = Application.Path & "/dbdata/asistenciatomar.sqlite"
-    hconndbnam = ".scanerguidb" & fechaactual & codigoLugar() & ".db"
+    hconndbnam = dbnamebase & fechaactual & codigoLugar() & ".db"
     hconniscon = False
     
-    hconn = New Connection 'Instanciamos conexion
+    hconn = New Connection  'Instanciamos conexion
     With hconn
         .Type = "sqlite3"
         .Host = User.Home   ' usando el home de quien corre la app para buscar alli la DB
         .Name = hconndbnam  ' decimos la db, si no existe dara error, y abajo la creamos/usamos anterior
     End With
-
+    
     Try hconn.Open
     If Error Then
         
         Print "Error al conectar: \"" & Error.Code & " " & Error.Text & "\"; actualizando a una al dia...."
         dbexistealdia = False
-
+        
         hconn.Close
-        Wait 4                  ' dejamos espacio a la operacion I/O si se arranco a cambio de dia justico
-
+        Wait 3                  ' dejamos espacio a la operacion I/O si se arranco a cambio de dia justico
+        
+        hconn.Type = "sqlite3"
+        hconn.Host = User.Home   ' usando el home de quien corre la app para buscar alli la DB
         hconn.Name = ""          ' no decimos aun el nombre/archivo de la db, la creamos si no existe
+        Wait 3
         hconn.Open
-        Wait 4                  ' dejamos espacio a la operacion I/O si se arranco a cambio de dia justico
-
-        fechanterior = Val(Format$(Now, "yyyymmdd"))
-        hconndbnam = ".scanerguidb" & fechanterior & codigoLugar() & ".db"
+        Wait 3                  ' dejamos espacio a la operacion I/O si se arranco a cambio de dia justico
+        
+        fechanterior = fechaactual
+        hconndbnam = dbnamebase & fechanterior & codigoLugar() & ".db"
         dbante = False
         While dbante == False
             fechanterior = fechanterior - 1
-            Print "Intentando sincronizar la db pasada del dia " & fechanterior
+            Print "Intentando sincronizar la db, usando plantilla desde " & fechanterior
             If fechanterior < 20130101 Then
                 dbante = True
-                hconndbnam = ".scanerguidb" & fechaactual & codigoLugar() & ".db"
+                hconndbnam = dbnamebase & fechaactual & codigoLugar() & ".db"
                 If Not hconn.Databases.Exist(hconndbnam) Then  'no existe la B.D. la creamos
                     hconn.Databases.Add(hconndbnam)
                     Wait 5              'elproceso de creacion tarda (operacion I/O) asi que esperamos ocurra
                     hconn.Close
+                    hconn.Type = "sqlite3"
+                    hconn.Host = User.Home   ' usando el home de quien corre la app para buscar alli la DB
                     hconn.Name = hconndbnam
+                    Print "Sin historicos de base de datos, creando una nueva desde cero, e iniciandola"
                 Else
+                    Wait 5              'elproceso de creacion tarda (operacion I/O) asi que esperamos ocurra
+                    hconn.Close
+                    hconn.Type = "sqlite3"
+                    hconn.Host = User.Home   ' usando el home de quien corre la app para buscar alli la DB
                     hconn.Name = hconndbnam
+                    Print "Sin solucionar, la base de datos no estaba, usando posible corrupta"
                 Endif
                 dbexisteantes = False
             Else
-                hconndbnam = ".scanerguidb" & fechanterior & codigoLugar() & ".db"
+                hconndbnam = dbnamebase & fechanterior & codigoLugar() & ".db"
                 ' si existe DB anterior, usarla como base ya que tiene huellas dactilares
                 If Exist(User.Home & "/" & hconndbnam) Then
-                    Shell "cp " & User.Home & "/" & hconndbnam & " " & User.Home & "/" & ".scanerguidb" & fechaactual & codigoLugar() & ".db"
-                    hconndbnam = ".scanerguidb" & fechaactual & codigoLugar() & ".db"
+                    Shell "cp " & User.Home & "/" & hconndbnam & " " & User.Home & "/" & dbnamebase & fechaactual & codigoLugar() & ".db"
+                    hconndbnam = dbnamebase & fechaactual & codigoLugar() & ".db"
                     dbante = True
                 Endif
+                dbexistealdia = False
                 dbexisteantes = True    ' la db es tomada de un dia anterior, borrar historicos pendiente
             Endif
         Wend
-
-       hconn.Close
-       Wait 5
-        Try hconn.Open
+        
+        If hconn.Opened Then
+            hconn.Close
+        Endif
+        Wait 4
+        hconn.Type = "sqlite3"
+        hconn.Host = User.Home   ' usando el home de quien corre la app para buscar alli la DB
+        hconn.Name = hconndbnam
+        Try hconn.Open      ' en este punto, ya se configuro arriba el nombre y si existe o no.
         If Error Then
             Print "Error, la DB " & hconn.Name & " " & Error.Code & "" & Error.Text & ", no mas acciones para solucionar:\n" & Error.Code & " " & Error.Text
             hconn = Null
@@ -170,31 +182,37 @@ Public Sub getConeccionDB() As Connection
     Endif
     
     If hconniscon Then
-         Print "Conexion realizada, usando la DB " & hconn.Name & " existente/creada, no es necesario sincronizar"
+        Print "Conexion realizada, usando la DB " & hconn.Name & " sincronizada"
     Else
-        Return hconniscon
+        Print "Conexion existente, pero la DB " & hconn.Name & " es invalida"
+        Return Null
     Endif
-
-Return hconn
-
+    
+    Return hconn
+    
 End
 
 '' cierra coneccion alguna si aun esta abierta
 Public Function closeConnection()
+
     If isConected() == True Then
         hconn.Close
         hconniscon = False
+        Print "Conexion anulada, base de datos liberada"
     Endif
+
 End
 
 '' informa si la db ya existe, lo que significa que ya este sincronizada y con datos listos para usar, ya uqe getconnection y sincronizar la inician slo si es creada
-Public Function itsDBexiste() As Boolean
+Public Function itsDBaldia() As Boolean
+
     Return dbexistealdia
+
 End
 
 '' este, inicia estructura de datos para poder listar las huellas dactilares
 Public Function sysasis_init_listado_id(Optional lugar As String = "tiendas")
-
+    
     ' Create TABLE sysasis_listado_id(
     '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI SINO numero, en VNZ es CI
     '   fec_registro Date Not Null, - - fecha del registro de dia de su huella dactilar, sin hora indica solo el dia
@@ -204,44 +222,43 @@ Public Function sysasis_init_listado_id(Optional lugar As String = "tiendas")
     '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez
     '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
     '   PRIMARY KEY(cod_ficha, fec_registro, cod_gerencia, hex_huelladactilar),
-
+    
     ' Tabla de la ficha de registro de sysasis_listado_id
-
+    
     Dim hTable As Table
-
+    
     If isConected() == False Then
         getConeccionDB()
     Endif
     
     If hconniscon Then
-    If Not hconn.Tables.Exist("sysasis_listado_id") Then
-        hTable = hconn.Tables.Add("sysasis_listado_id")
-        With hTable.Fields
-            '.Add("id", db.Serial) ' para unicidad
-            .Add("cod_ficha", db.String, 20)   ' FICHA/Cedu,  el id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
-            .Add("cod_lugar", db.String, 20, lugar)   ' nombre de ubicacion(tienda o sobrenombre) en al que labora/trabaja o se enrolo
-            .Add("fec_registro", db.String,, Val(Format$(Now, "mmddhh")))   ' fecha del registro de dia de su huella dactilar, sin hora indica solo el dia
-            .Add("cod_gerencia", db.String, 20)   ' ubicacion(tienda)a la que pertenece, es CODGER por ejemplo
-            .Add("hex_huelladactilar", db.Blob,, Null)  ' huella dactilar del usuario/trabajado ficha, es HEXFING
-            .Add("hex_fotocara", db.Blob,, Null)  ' fot de la cara del usuario/trabajado ficha, OPCIONAL
-            .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
-            .Add("cod_usuasys", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
-        End With
-        hTable.PrimaryKey = ["cod_ficha", "fec_registro", "cod_gerencia"] ' no es necesario , es solo lectura
-        hTable.Update
-    Endif
+        If Not hconn.Tables.Exist("sysasis_listado_id") Then
+            hTable = hconn.Tables.Add("sysasis_listado_id")
+            With hTable.Fields
+                '.Add("id", db.Serial) ' para unicidad
+                .Add("cod_ficha", db.String, 20)   ' FICHA/Cedu,  el id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+                .Add("cod_lugar", db.String, 20, lugar)   ' nombre de ubicacion(tienda o sobrenombre) en al que labora/trabaja o se enrolo
+                .Add("fec_registro", db.String,, Val(Format$(Now, "mmddhh")))   ' fecha del registro de dia de su huella dactilar, sin hora indica solo el dia
+                .Add("cod_gerencia", db.String, 20)   ' ubicacion(tienda)a la que pertenece, es CODGER por ejemplo
+                .Add("hex_huelladactilar", db.Blob,, Null)  ' huella dactilar del usuario/trabajado ficha, es HEXFING
+                .Add("hex_fotocara", db.Blob,, Null)  ' fot de la cara del usuario/trabajado ficha, OPCIONAL
+                .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
+                .Add("cod_usuasys", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+            End With
+            hTable.PrimaryKey = ["cod_ficha", "fec_registro", "cod_gerencia"] ' no es necesario , es solo lectura
+            hTable.Update
+        Endif
     Else
-    Message.Error(" error " & Error.Code & " " & Error.Text)
+        Message.Error(" error " & Error.Code & " " & Error.Text)
     Endif
     closeConnection
-
+    
 End
-
 
 '' proceso de inicializacion de DB, tabla de enrolamiento, si no existe en la DB una tabla de enrolamiento, se crea.
 '' este, inicia estructura de datos para poder enrolar nuevas huellas dactilares
 Public Function sysasis_init_enrolar_id(Optional lugar As String = "tiendas")
-
+    
     ' Create TABLE sysasis_enrolar_id(
     '   cod_ficha VARCHAR(20) Not Null, - - FICHA/Cedu, el id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
     '   cod_lugar VARCHAR(20) Not Null, - - nombre de ubicacion(tienda o sobrenombre) en la que labora
@@ -252,11 +269,11 @@ Public Function sysasis_init_enrolar_id(Optional lugar As String = "tiendas")
     '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez
     '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
     '   PRIMARY KEY(cod_ficha, fec_registro, cod_gerencia, hex_huelladactilar),
-
+    
     ' Tabla de la ficha de registro de sysasis_enrolar_id
-
+    
     Dim hTable As Table
-
+    
     If isConected() == False Then
         getConeccionDB()
     Endif
@@ -277,13 +294,12 @@ Public Function sysasis_init_enrolar_id(Optional lugar As String = "tiendas")
         hTable.Update
     Endif
     closeConnection
-
+    
 End
-
 
 '' inicializacion de registros en la DB, si no existe en DB la tabla de registros la crea
 Public Function sysasis_init_registro(Optional lugar As String = "tiendas")
-
+    
     ' - - tabla de registros del horario de trabajo, es usada para enviar a OP y registrar los horarios laborados
     ' Create TABLE sysasis_registro(
     '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
@@ -309,12 +325,12 @@ Public Function sysasis_init_registro(Optional lugar As String = "tiendas")
     '   - - la expotacio se realizara en un vista que colocara el calculo de las horas y
     '   - - estos registros "dispersos"(ejemplo, entro en castellana, su primera salida debe ser de castellana antes de ir a otro lado)
     '   - - diferencia entre registro no puede ser menor a 1 / 3 hora y mayor a 6 horas CUANDO SEAN SELLOS DISTINTOS
-
+    
     ' Poruqe dos columnas de fecha? : porque la segunda es por defecto la fecha y hora actual, si alguien manipula, se registra
     ' lo que significa que si alguien inserta alguna hora de trabajo a mano, se vera la trampa si no ejecuta completo el query
-
+    
     Dim hTable As Table, dummyquer As String
-
+    
     If isConected() == False Then
         getConeccionDB()
     Endif
@@ -350,13 +366,12 @@ Public Function sysasis_init_registro(Optional lugar As String = "tiendas")
         hconn.Commit
     Endif
     closeConnection
-
+    
 End
-
 
 '' inicio de tabla de registros de actividad, puede que exista gente con huellas dactilares piches
 Public Function sysasis_init_marcajes(Optional lugar As String = "tiendas")
-
+    
     ' - - tabla de registros del horario de trabajo, es usada para enviar a OP y registrar los horarios laborados
     ' Create TABLE sysasis_init_marcajes(
     '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
@@ -373,12 +388,12 @@ Public Function sysasis_init_marcajes(Optional lugar As String = "tiendas")
     '   - - la expotacio se realizara en un vista que colocara el calculo de las horas y
     '   - - estos registros "dispersos"(ejemplo, entro en castellana, su primera salida debe ser de castellana antes de ir a otro lado)
     '   - - diferencia entre registro no puede ser menor a 1 / 3 hora y mayor a 6 horas CUANDO SEAN SELLOS DISTINTOS
-
+    
     ' Poruqe dos columnas de fecha? : porque la segunda es por defecto la fecha y hora actual, si alguien manipula, se registra
     ' lo que significa que si alguien inserta alguna hora de trabajo a mano, se vera la trampa si no ejecuta completo el query
-
+    
     Dim hTable As Table
-
+    
     If isConected() == False Then
         getConeccionDB()
     Endif
@@ -403,9 +418,8 @@ Public Function sysasis_init_marcajes(Optional lugar As String = "tiendas")
         hTable.Update
     Endif
     closeConnection
-
+    
 End
-
 
 '' proceso de sincronizado off-line para cuadno no hay internet
 '' este proceso, inicia la tabla de lista de trabajadores/usuarios, y la pobla desde un archivo CSV o desde un regiastro por defecto
@@ -414,7 +428,7 @@ End
 '' una vez realizado esto borra el fichero desencriptado, los archivos son movidos por fecha
 '' la fecha es el numero, no importando la de la maquina, la ultima fecha sera siempre el numero mayor
 Public Sub syncronizar(arcm As Boolean, Optional lugar As String = "tienda", Optional nf As String = "consolidadotemp_export_", sincronizar As Boolean = True) As Integer
-
+    
     Dim namFile As String       ' nombre del archivo CVS que trae la lista actualizada sin comprimir
     Dim namComp As New Uncompress   ' nombre del archivo comprimido que trae la lista en plano
     Dim hFile As File           ' abstrancion objeto del archivo CSV que se leera con los datos
@@ -426,18 +440,23 @@ Public Sub syncronizar(arcm As Boolean, Optional lugar As String = "tienda", Opt
     Dim extFile As String       ' extension del archivo dependiendo si esta compreso
     Dim sourcepath As String    ' ruta del archivo, por defecto home y /tmp si primera vez
     Dim sepa As String          ' separador de campos por defecto ";", puede que sea "," o ";"
-
+    
     Dim tipnom As Integer, codsuc As Integer, codger As Integer, ficha As Integer
     Dim nombres As Integer, apellidos As Integer, estado As Integer, cedula As Integer, cedu As Integer
     Dim hexfing As Integer, fingreso As Integer
-
+    
+    Dim dtipnom As String, dcodsuc As String, dcodger As String, dficha As String
+    Dim dnombres As String, dapellidos As String, destado As String, dcedula As String, dcedu As String
+    Dim dhexfing As String, dfingreso As String
+    
     Dim fileexits As Boolean = False
     Dim archivocsv As Boolean = False
-    Dim dummycont As Integer, icols As Integer, iline As Integer    ' usados para manejar las lineas y los titulos de nombre de campos
+    Dim dummycont As Integer, dumtacont As Integer  ' cantidades csv/tabla
+    Dim icols As Integer, iline As Integer    ' usados para manejar las lineas y los titulos de nombre de campos
     Dim dummyword As String     ' usado para ir analizando cada celada del archivo csv, si tiene " o si necesita escaparse
     Dim dummyquer As String     ' usado para efectuar querys mediante construccion de consulta dinamica segun parametros
     Dim hexfindata As Variant   ' data blob de hexfin despeus de reconvertir desde base64 que este en el archivo
-
+    
     tipnom = 1          ' columna para lugar/entidad a la que compete dar respuesta
     codsuc = 2          ' columna de info de relacionada a la anterior, nunca viene vacio, por ello de segunda
     codger = 3          ' columna del departamento/ingerencia a que trabaja, nunca viene vacio por ello necesario
@@ -479,13 +498,13 @@ Public Sub syncronizar(arcm As Boolean, Optional lugar As String = "tienda", Opt
     Else
         extFile = ".csv"            ' sino es un archivo de texto plano separado por punto y coma
     Endif
-
+    
     ' inicializacion de la lista matutina, esta lista solo se debe actualizar si hay registros nuevos (cant enrolados <> cant trabj)
     numDate = Val(Format$(Now, "yyyymmdd"))
     sourcepath = User.Home
     namFile = sourcepath &/ nf & numDate & extFile
-    Print "Intentando obtener actualizado de datos de nomina exportados.... como " & namFile
-
+    Print "Intentando actualizado de datos de nomina .. como " & namFile
+    
     ' verificacion de si hay actualizacion de la lista de empleados, sino no procedo a usar alguno antiguo
     If Not Exist(namFile) Then
         fileexits = False
@@ -493,89 +512,63 @@ Public Sub syncronizar(arcm As Boolean, Optional lugar As String = "tienda", Opt
             numDate = numDate - 1
             namFile = sourcepath &/ nf & numDate & extFile
             If Exist(namFile) Then
-                Print "encontrado archivo viejo " & namFile
+                Print "Encontrado archivo viejo " & namFile
                 fileexits = True
             Endif
-            If numDate < 20121231 Then
-                Print numDate 
-                sourcepath = "/tmp"
-                namFile = sourcepath &/ nf & numDate & extFile
+            If numDate < 20130922 Then
                 ' si ni hay base de datos ni archivo, no hay nada que hacer
-                If itsDBexiste() == False Then
-                    If Not Exist(namFile) Then
-                        Print "No se encontro datos de sincronizacion al dia, consulte a sistemas. \n"
-                        "Debe existir un archivo similar a " & namFile & " como minimo."
-                         Goto RellenarListado
-                    Else
-                        fileexits = True
-                    Endif
-                Else
-                    sincronizar = False
-                    Goto RellenarListado
+                If Not Exist(namFile) Then
+                    Print "No se encontro datos de sincronizacion al dia, no se actualizan datos. \n"
+                    "Debe existir un archivo similar a " & namFile & " como minimo."
                 Endif
+                'Goto RellenarListado   ' TODO quitar si no esta listo sincronizacion
+                fileexits = False
+                Break               ' rompo el ciclo, nunca encontrare el archivo
             Endif
         Wend
     Else
         fileexits = True ' si el archivo existe a la primera la lista esta al dia
     Endif
     
-    ' TODO falta sincronizar por CSV
-    If archivocsv Then
+    If fileexits Then
+        Print "verificando tipo de formato del archivo ... "
         If arcm Then
             extFile = ".cvs"
             namComp.Type = "bzlib2"
             Try namComp.File(namFile, sourcepath &/ nf & numDate & extFile)
             If Error Then
-                Message.Warning("No se pudo procesar los datos de sincronizacion al dia, consulte a sistemas. \n" 
-                  "\n\nNo se puede tomar asistencia, no hay un listado o el mismo esta dañado.\n\n"
-                  "Debe existir un archivo similar a " & namFile & " como minimo.")
-                  'Return -1
-                  archivocsv = False
+                Message.Warning("Error al descifrar el archivo " & namFile & ": corrupto o invalido.")
+                archivocsv = False
             Endif
             namFile = sourcepath &/ nf & numDate & extFile
         Endif
-        
-            'hay archivos nuevos, hay gente nueva, por ende se borra la tabla y se crea nueva
-        hconn.Begin
-            If hconn.Tables.Exist("ConsolidadoTemp") Then
-                Print "verificando si necesario sincronizar, si la data ya existe en la db desde archivo ... "
-                hFile = Open namFile For Read
-                dummycont = 0
-                While Not Eof(hFile)
-                    Line Input #hFile, wline
-                    If RInStr(wline, "FICHA") > 0 Or RInStr(wline, "ficha", 0, 1) > 0 Then
-                        dummycont = 0       ' FICHA es uno de los posibles tutilos/cabecera, si viene no contarlo
-                    Else
-                        dummycont += 1      ' la misma cantidad de lineas de csv es la misma cantidad de registros
-                    Endif
-                Wend
-                hFile.Close
-                Try Kill namFile            ' ojo borramos rastro del la "desencriptado" y descomprimido
-                If itsDBexiste() Then
-                    dummyquer = "Select count( ficha ) as lineas From ConsolidadoTemp "
-                    wtable = hconn.Exec(dummyquer)
-                    If dummycont == wtable!lineas Then
-                        Print "Datos encontrados, registros en db igual a archivo, sin necesidad de sincronizacion. " & wtable!lineas & " contra " & dummycont
-                        Goto RellenarListado
-                    Endif
+        Print "verificando cantidad de registros en el archivo ... "
+        If archivocsv Then
+            hFile = Open namFile For Read
+            dummycont = 0
+            While Not Eof(hFile)
+                Line Input #hFile, wline
+                If RInStr(wline, "FICHA") > 0 Or RInStr(wline, "ficha", 0, 1) > 0 Then
+                    dummycont = 0       ' FICHA es uno de los posibles tutilos/cabecera, si viene no contarlo
+                Else
+                    dummycont += 1      ' la misma cantidad de lineas de csv es la misma cantidad de registros
                 Endif
-                Try hconn.Tables.Remove("ConsolidadoTemp")
-                If Error Then
-                Message.Warning("No se pudo actualizar los datos de sincronizacion al dia, consulte a sistemas. \n" 
-                  "\n\nNo se puede tomar asistencia, no hay un listado o el mismo esta dañado.\n\n"
-                  "Debe de ser completada la lista, error " & Error.Text & Error.Code)
-                  'Return -1
-                  archivocsv = False
-                Endif
-            Endif
-        Try hconn.Commit
-            If Error <> 0 Then
-            Message.Error("No se pudo actualizar los datos de sincronizacion al dia, consulte a sistemas. \n" 
-              "\n\nNo se puede tomar asistencia, no hay un listado o el mismo esta dañado.\n\n"
-              "No se pudo generar la lista nueva en la DB, la DB puede que este dañada.")
-              Return -1
-            Endif
-        Print "Procesando la data del archivo, encontrado que hay que actualizar... "
+            Wend
+            hFile.Close
+        Endif
+    Endif
+    
+    If hconn.Tables.Exist("ConsolidadoTemp") Then
+        dummyquer = "Select count( ficha ) as lineas From ConsolidadoTemp "
+        wtable = Null           ' si existe la tabla, verificamos cantidad de registros
+        wtable = hconn.Exec(dummyquer)
+        dumtacont = wtable!lineas
+    Endif
+
+    'si la DB esta al dia que corre, no se realiza actualizacion alguna, innecesario
+    If itsDBaldia() == False Then
+        Print "Base de datos iniciada por vez primera hoy dia, informacion de sincronismo: " & dumtacont & ":" & dummycont & "."
+    If fileexits Then
         ' procesamiento del archivo CSV, en un futuro este deberia solo enviar los cambiios
         hFile = Open namFile For Read
         ' primero leemos solo la primera linea, para determinar si hay nombres de columnas
@@ -629,6 +622,7 @@ Public Sub syncronizar(arcm As Boolean, Optional lugar As String = "tienda", Opt
         Next
         dummycont = dummycont + 1
         ' leyendo la primera columna ya se hizo, ahora leemos el resto
+        ' TODO 1) hacer query de si existe, 2) si existe hacer update, sino create, 3) consolidar
         hconn.Begin
         While Not Eof(hFile)
             Line Input #hFile, wline
@@ -656,8 +650,11 @@ Public Sub syncronizar(arcm As Boolean, Optional lugar As String = "tienda", Opt
         FMain.datos.setDbLocalLista(True) ' comunico a main que ya no tiene que invocarme mas nunca
         Try Kill namFile
     Endif
+    Else
+        Print "Base de datos ya iniciada hoy dia, no necesario sincronismos, certificando tablas..."
+    Endif
     
-    RellenarListado:
+RellenarListado:
     
     sysasis_init_listado_id(lugar)     ' inicio la tabla de listado filtrado
     sysasis_init_enrolar_id(lugar)     ' inicio la tabla de enrolado nuevo
@@ -684,11 +681,12 @@ Public Sub syncronizar(arcm As Boolean, Optional lugar As String = "tienda", Opt
     closeConnection
     Print "Base de datos sincronizada y preparada, lista para usar."
     Return 0
-
+    
 End
 
 '' celdalimpia remueve la comillas simples/dobles de una variable texto
 Private Sub celdalimpia(celda As String, Optional delimitador As String = "\"") As String
+
     If Left$(celda) == "\'" And Right$(celda) == "\'" Then
         celda = Mid$(celda, 2, -1)
     Endif
@@ -697,8 +695,8 @@ Private Sub celdalimpia(celda As String, Optional delimitador As String = "\"") 
         celda = Mid$(celda, 2, -1)
     Endif
     Return celda
-End
 
+End
 
 '' procedimiento de reclutamiento de nuevos esclav.. errr nuevos trabjadores a la lista
 '' requiere el id (ficha/cedula/identificador) del usuario o trabajador, 
@@ -726,8 +724,6 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
         getConeccionDB()
     Endif
     
-    
-
     ' se esta registrando la huella de unDFi nuevo usuario, verificamos no lo hayan enrolado antes
     dummyquer = "SELECT count(cod_ficha) as existe FROM sysasis_enrolar_id WHERE cod_ficha LIKE '" & id & "'"
     Try hres = hconn.Exec(dummyquer)
@@ -747,7 +743,7 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
             Endif
         Endif
     Endif
-
+    
     If coderro == 2 Then
         Print " Error registrando el id: " & Error.Text & " " & Error.Code & " consulte con el departamento de nomina, y en ultimo sistemas."
         Message.Warning(" Error registrando el id: " & Error.Text & " " & Error.Code & "\nPor favor vuelva a intentarlo, si persiste dicho error entonces\nconsulte con el departamento de nomina, a traves de la mensageria.")
@@ -796,17 +792,17 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
         hconn.Rollback
     Else
         coderro = 0
-            dummyquer = "SELECT APELLIDOS as ape, nombres as nom from ConsolidadoTemp WHERE cedula='" & fixedcedu & "' and lower(estado) = 'activo'"
-            Try hres = hconn.Exec(dummyquer)
-            Print " error " & Error.Text & Error.Code & " rs " & hres.Count
-            If Not IsNull(hres) Then
-                If hres.Count > 0 Then
-                    ' Print hres.Fields & " ver " & wtable.Max
-                    datos[0] = hres!ape
-                    datos[1] = hres!nom
-                Endif
+        dummyquer = "SELECT APELLIDOS as ape, nombres as nom from ConsolidadoTemp WHERE cedula='" & fixedcedu & "' and lower(estado) = 'activo'"
+        Try hres = hconn.Exec(dummyquer)
+        Print " error " & Error.Text & Error.Code & " rs " & hres.Count
+        If Not IsNull(hres) Then
+            If hres.Count > 0 Then
+                ' Print hres.Fields & " ver " & wtable.Max
+                datos[0] = hres!ape
+                datos[1] = hres!nom
             Endif
-            Message.Info("Usuario/trabajador encontrado.. y enrolado.\n " & id & " : " & datos[0] & ", " & datos[1])
+        Endif
+        Message.Info("Usuario/trabajador encontrado.. y enrolado.\n " & id & " : " & datos[0] & ", " & datos[1])
     Endif
     ' ahora, si la aplicacion es al mismo tiempo en un solo lugar, verificar el modo directo (sin requisito de aprovacion)
     Print "Verificando si enrolado/verificado directo esta activado... " & direct_enroll
@@ -841,7 +837,7 @@ Public Sub sys_enroll_user(id As String, Optional direct_enroll As Boolean = Fal
                 Print "Cargando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
                 wtable!hex_huelladactilar = File.Load(ruta_data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
             Endif
-           'wtable!hex_fotocara = imag_cara ' la foto por si no sirve el escanerdedo y hay que auditar la asistencia"
+            'wtable!hex_fotocara = imag_cara ' la foto por si no sirve el escanerdedo y hay que auditar la asistencia"
             wtable!fec_actualizacion = Date(Now)
             wtable!cod_usuasys = "systemas"
             wtable.Update
@@ -890,7 +886,7 @@ Public Sub sys_verify_user(id As String, Optional ruta_data As String = "", Opti
     If isConected() == False Then
         getConeccionDB()
     Endif
-
+    
     ' el id varia en digitos o formato, para el disparador, remover A/Z y autocompletar
     fixedcedu = fixidlen(id)
     id = fixedcedu
@@ -909,7 +905,7 @@ Public Sub sys_verify_user(id As String, Optional ruta_data As String = "", Opti
             Endif
             If Comp(ruta_data, "", gb.IgnoreCase) == 0 Then
                 Print "Guardando data por bean/write archivo " & ruta_data & " desde el blob directamente."
-            'Close myFinger
+                'Close myFinger
             Else
                 ' Print "Guardando data desde archivo " & ruta_data & " directamente en vez de transporte bean."
                 ' File.Save(ruta_data, wtable["hex_huelladactilar"].Data) ' HEXFING64 -- la huella dactilar, viene base64 codificado y debe convertirse antes de colocarse"
@@ -958,7 +954,7 @@ Public Sub sys_search_user(id As String, Optional forcenomina As Integer = 0) As
     If isConected() == False Then
         getConeccionDB()
     Endif
-
+    
     ' el id varia en digitos o formato, para el disparador, remover A/Z y autocompletar
     fixedcedu = fixidlen(id)
     id = fixedcedu
@@ -969,33 +965,33 @@ Public Sub sys_search_user(id As String, Optional forcenomina As Integer = 0) As
     If Error Then
         coderro = 2
     Else
-         If Not IsNull(wtable) Then
-        Print wtable["existe"] & " primer verif " & wtable.Count
+        If Not IsNull(wtable) Then
+            Print wtable["existe"] & " primer verif " & wtable.Count
             datos[0] = ""
             datos[1] = "Invitado"
             datos[2] = "998"
             If Val(wtable!existe) >= 1 And wtable.Count > 0 Then
-                 dummyquer = "SELECT count(*) as existe from ConsolidadoTemp WHERE ficha like '" & id & "'"
-                 hres = Null
-                 hres = hconn.Exec(dummyquer)
-                 If Not IsNull(hres) And Val(hres!existe) >= 1 Then
-                     dummyquer = "SELECT APELLIDOS as ape, nombres as nom, codger as cub from ConsolidadoTemp WHERE ficha like '" & id & "'"
-                     hres = Null
-                     hres = hconn.Exec(dummyquer)
-                     If Not IsNull(hres) And hres.Count > 0 Then
-                    ' Print hres.Fields & " ver " & wtable.Max
-                     Print "Usuario/trabajador encontrado.. para validar... " & coderro & " " & hres!ape & " " & hres!nom & " " & hres!cub
-                     datos[0] = hres!ape
-                     datos[1] = hres!nom
-                     datos[2] = hres!cub
-                     Else
-                         Print "Existe con huella, pero no esta o fue eliminado de nomina.."
-                     Endif
-                 Else
-                     datos[0] = "En nomina"
-                     datos[1] = "no esta aun"
-                     Print "Existe con huella, pero no esta o fue eliminado de nomina.."
-                 Endif
+                dummyquer = "SELECT count(*) as existe from ConsolidadoTemp WHERE ficha like '" & id & "'"
+                hres = Null
+                hres = hconn.Exec(dummyquer)
+                If Not IsNull(hres) And Val(hres!existe) >= 1 Then
+                    dummyquer = "SELECT APELLIDOS as ape, nombres as nom, codger as cub from ConsolidadoTemp WHERE ficha like '" & id & "'"
+                    hres = Null
+                    hres = hconn.Exec(dummyquer)
+                    If Not IsNull(hres) And hres.Count > 0 Then
+                        ' Print hres.Fields & " ver " & wtable.Max
+                        Print "Usuario/trabajador encontrado.. para validar... " & coderro & " " & hres!ape & " " & hres!nom & " " & hres!cub
+                        datos[0] = hres!ape
+                        datos[1] = hres!nom
+                        datos[2] = hres!cub
+                    Else
+                        Print "Existe con huella, pero no esta o fue eliminado de nomina.."
+                    Endif
+                Else
+                    datos[0] = "En nomina"
+                    datos[1] = "no esta aun"
+                    Print "Existe con huella, pero no esta o fue eliminado de nomina.."
+                Endif
             Else
                 Print "usuario no existe, necesita ser enrolado primero o fue eliminado en una actualizacion de nomina.."
             Endif
@@ -1017,10 +1013,8 @@ Public Sub sys_search_user(id As String, Optional forcenomina As Integer = 0) As
     
 End
 
-
 Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, minu As Integer, Optional ruta_foto As String = "", ruta_data As String = "", data As Variant) As Integer
     
-
     ' - - tabla de registros del horario de trabajo, es usada para enviar a OP y registrar los horarios laborados
     '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
     '   cod_cedula VARCHAR(20) Not Null, - - cedula con nacionalidad y guin del trabajador, solo VNZ
@@ -1046,7 +1040,7 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
     '   - - diferencia entre registro no puede ser menor a 1 / 3 hora y mayor a 6 horas CUANDO SEAN SELLOS DISTINTOS
     ' Poruqe dos columnas de fecha? : porque la segunda es por defecto la fecha y hora actual, si alguien manipula, se registra
     ' lo que significa que si alguien inserta alguna hora de trabajo a mano, se vera la trampa si no ejecuta completo el query
-
+    
     Dim wtable As Result        ' virtualizacion en tabal del archivo CSV antes de meter en la tabal de BD
     Dim dummyquer As String     ' query para manejar el usuario en los registros
     Dim hres As Result          ' abstraccion de resultados desde DB despeus de ejecutar query
@@ -1105,7 +1099,7 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
             entradas = 1
         Endif
     Else
-            entradas = 1
+        entradas = 1
     Endif
     ' se registra la hora del usuario con el dedo, laimagen es opcional, peropor ahora se le pide siempre
     hconn.Begin
@@ -1228,7 +1222,7 @@ Public Sub sys_writehistory_user(id As String, cubi As String, hora As Integer, 
         Message.Warning(" Error registrando el id: " & Error.Text & " " & Error.Code & "\nPor favor vuelva a intentarlo, si persiste dicho error entonces\nconsulte con el departamento de nomina, a traves de la mensageria.")
         entradas = -1
     Endif
-   Print "Usuario/trabajador registrado, y confirmado su " & entradas & " al trabajo. " & coderro
+    Print "Usuario/trabajador registrado, y confirmado su " & entradas & " al trabajo. " & coderro
     closeConnection
     Return entradas
     

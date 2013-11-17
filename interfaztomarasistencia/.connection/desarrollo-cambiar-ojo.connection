@@ -4,5 +4,5 @@ Type="sqlite"
 Path="/home/systemas"
 RememberPassword=False
 IgnoreCharset=False
-Database=".scanerguidb20130916999.db"
+Database=".scanerguidb20130924999.db"
 

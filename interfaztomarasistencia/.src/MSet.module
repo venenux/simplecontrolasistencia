@@ -30,14 +30,14 @@ Public Sub prepararporconfiguracion() As DData
     Else
         datos.setCamaraSize(configuracion["dispositivo/tamano"])
     End If  
-
+    
     If IsNull(configuracion["conexion/tipo", Null]) Then
         Print "No definida conexcion local en archivo configuracion"
         datos.setContipoLo("sqlite3")
     Else
         datos.setContipoLo(configuracion["conexion/tipo"])
     End If  
-
+    
     If IsNull(configuracion["origenes/op", Null]) Then
         Print "Origen OP no definido, usando devel por defecto"
         datos.setHostOP("37.10.254.20")
@@ -60,17 +60,30 @@ Public Sub prepararporconfiguracion() As DData
     End If  
     
     If IsNull(configuracion["modalidad/enrolado", Null]) Then
-       Print "Enrolado indirecto aprovacion por nomina usandose, no se definio en configuracon"
+        Print "Enrolado indirecto aprovacion por nomina usandose, no se definio en configuracon"
         datos.setModoDirecto("activacion")
     Else
         datos.setModoDirecto(configuracion["modalidad/enrolado"])
     End If  
     
     If IsNull(configuracion["modalidad/verificado", Null]) Then
-       Print "Verificado de dedoy cara usandose, no definido en configuracion"
+        Print "Verificado de dedoy cara usandose, no definido en configuracion"
         datos.setModoVerificado("dedoycara")
     Else
         datos.setModoVerificado(configuracion["modalidad/verificado"])
+    End If  
+    
+    If IsNull(configuracion["modalidad/control", Null]) Then
+        Print "Control de acceso habilitado por defecto, redefina en la configuracion"
+        datos.setAccessControlMode(True)
+    Else
+        Print "ver: " & configuracion["modalidad/control"]
+        If Comp(configuracion["modalidad/control"], "T", gb.IgnoreCase) == 0 Or Comp(configuracion["modalidad/control"], "", gb.IgnoreCase) == 0 Then
+            datos.setAccessControlMode(configuracion["modalidad/control"])
+        Else
+            Print "Control de acceso habilitado por defecto, redefina en la configuracion"
+            datos.setAccessControlMode(True)
+        Endif
     End If  
     
     If IsNull(configuracion["localidad/ubicacion", Null]) Then
@@ -101,12 +114,12 @@ Public Sub prepararporconfiguracion() As DData
         Message.Info(messageinfo)
     Endif
     
-'     #enrolado can be "directo" Or "activacion"
-' enrolado = "directo"
-' #verificado can be "dedo", "cara or " dedoycara ""
-' verificado = "dedoycara"
-' #modo can be "demo", "auto" Or "connodo", the "connodo" need a post5gresql DB working ina valid ip
-' modo = "auto"
+    '     #enrolado can be "directo" Or "activacion"
+    ' enrolado = "directo"
+    ' #verificado can be "dedo", "cara or " dedoycara ""
+    ' verificado = "dedoycara"
+    ' #modo can be "demo", "auto" Or "connodo", the "connodo" need a post5gresql DB working ina valid ip
+    ' modo = "auto"
     Return datos
     
 End

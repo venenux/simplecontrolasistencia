@@ -210,7 +210,7 @@ Public Sub Form_Open()
   gripcodip.Columns[3].W = 200
    ' invocar el procedimiento que hace el llenado autómatico una  vez arranque el programa
    ' y no se repita mas
-   If Not (firstrun) Then reporte_ip_x_lugar()
+'    If Not (firstrun) Then reporte_ip_x_lugar()
 End
 Public Sub salir_cmd_Click()
   
@@ -692,7 +692,7 @@ Public Sub Form_Resize()
 End
 '' renicia la presentación de la ventana que representa el programa
 ''  con todos sus elementos en pantalla
-Private Sub reinicio_tamanos()
+Public Sub reinicio_tamanos()
   gr.Width = Me.Width - 30
   gr.Height = Me.Height - gr.Y - 40
   gr.Refresh
@@ -887,6 +887,5 @@ End
 
 
 Public Sub Button1_Click()
- desarrollador.Show
-  
+ Quit 
 End

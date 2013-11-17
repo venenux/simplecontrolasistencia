@@ -43,7 +43,7 @@ Private iscamerapresente As Boolean ' variable que indicara que hay una camara u
 Private isscanerpresente As Boolean ' variable que indicara que hay un escaner de dedos, si false, posible este en modo emulado
 
 Private isemuladoactivo As Boolean  ' si no hay escaner presente, modo emulado poner en true
-Private istsincamactivo As Boolean  ' si no hay camara presente, modo dummy y no intentar tomar fotos
+Private isemuladocamara As Boolean  ' si no hay camara presente, modo dummy y no intentar tomar fotos
 
 Public mcaptura_emu As Boolean      ' semaforo, o indicador si al no haber dispositivo entra en modo emulado (igual que isscanerpresente)
 Public est_app_asis As Integer      ' semaforo, o interrupcion de salud del modulo, 0 listo, 1 se va invocar, 2 en pleno uso/verificando, 3 malo no hay backend
@@ -53,23 +53,23 @@ Public Sub funcionando_camara()
 
     Dim tamanovideo As New String[]
 
-    ' If hWebCam Then
-    '     hWebCam = Null
-    '     FMain.Pintarvideo.Enabled = False
-    '     Return
-    ' Endif
-
-    Try hWebCam = New VideoDevice(FMain.datos.getCamaraDev())
-    If Error Then
-        FMain.datos.setStatusCamara(False)
-        Message.Error(("Instale una camara valida linux, ademas debe ser solo una, revise la configuracion"))
-        est_app_asis = 5 ' sin camara o camara mal asignada... 
-        istsincamactivo = False
-        Return
+    If IsNull(hWebCam) Then
+        Try hWebCam = New VideoDevice(FMain.datos.getCamaraDev())
+        If Error Then
+            FMain.datos.setStatusCamara(False)
+            Print "Error accediendo al dispositivo: " & Error.Text
+            Message.Error(("Instale una camara valida linux, ademas debe ser solo una, revise la configuracion"))
+            est_app_asis = 5 ' sin camara o camara mal asignada... 
+            isemuladocamara = True ' TODO: se pone false en reinicio, este es el error
+            Return
+        Else
+            FMain.datos.setStatusCamara(True)
+            isemuladocamara = False
+        Endif
     Endif
 
-    hWebCam.Bright = 100
-    hWebCam.Contrast = 240
+    hWebCam.Bright = 60
+    hWebCam.Contrast = 200
     hWebCam.Whiteness = 150
     hWebCam.Hue = 0
     hWebCam.Color = 60
@@ -84,7 +84,7 @@ Public Sub funcionando_camara()
         hWebcam.Resize(320, 240) ' si el string esta mal formateado (menos o mas de dos elementos, uso por defecto
     Endif
 
-    Wait 0.001 ' espero un poco a quela camara se inicialize, gambas tarda en maquinas pote
+    Wait 1 ' espero un poco a quela camara se inicialize, gambas tarda en maquinas pote
     FMain.pintarvideo.Delay = 10
     FMain.pintarvideo.Enabled = True ' enciendo un temporizador que pinta en cada pasada una foto y simula el video
     FMain.datos.setStatusCamara(True)
@@ -414,9 +414,11 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
             If Val(verificado) > -1 Then
                 FMain.datos.setStatusVerificado(LineasProcesamiento[3])
             Else
-                FMain.datos.setStatusVerificado(True)
-                If verificado == "-6" Then
-                    verificado = "TRUE"
+                If FMain.datos.itsAccessControlMode() Then
+                    FMain.datos.setStatusVerificado(True)
+                    If verificado == "-6" Then
+                        verificado = "TRUE"
+                    Endif
                 Endif
             Endif
         Endif
@@ -475,12 +477,13 @@ Public Sub verif_dedo_rostro(usuario As String, Optional dedo As Integer = 1)
     If verificado == "FALSE" Then
         FMain.mensageusuario.Text = "Incorrecto: " & datos[1] & ".<br><br>Coloque el DEDO QUE REGISTRO sobre el capta huella:<br>* Realize LEVE PRESION firmemente.<br>* La yema debe colocarse completa.<br>"
     Endif
-    FMain.mensageusuario.Show
     If LineasProcesamiento.Count > 4 Then
         If Val(verificado) == -5 Then
             FMain.mensageusuario.Text = "Ud esta en nomina, pero no ha registrado su huella dactilar aun\n, favor comuniquese con su jefe inmediato en RRHH o con Sistemas"
         Endif
     Endif
+    FMain.mensageusuario.Show
+    FMain.mensageusuario.Visible = True
     'un print de log alli y listo
     Print "proceso de enrolado termino con resultqado : " & verificado
     ' eliminamos rastro, dado ya tenemos la foto dactilar y el archivo, incluso encriptado
@@ -526,5 +529,5 @@ Public Sub itsModoEmulado() As Boolean
 End
 
 Public Sub itsCameEmulado() As Boolean
-    Return istsincamactivo
+    Return isemuladocamara
 End

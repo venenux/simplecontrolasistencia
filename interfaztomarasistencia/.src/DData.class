@@ -354,12 +354,25 @@ End
 
 '' clave dinamica parte 1
 Private clavepart1 As String
-'' asignar la clave de administracion de enrolado
+'' asignar la primera parte par calcular la clave, este numero se le muestra al encargado para calcular la clave desde sysatemas
 Public Sub setClavePart1(clave As String)
     clavepart1 = clave
 End
-'' obtiene al clave dinamica diaria de enrolado y administracion
+'' para mostrar al encargado para calcular la clave desde sysatemas
 Public Sub getClavePart1() As String
     Return clavepart1
 End
+
+
+'' marca de que se registren los invitados adicionalmente
+Private permiteinvitado As Boolean
+'' configurar si se permitiran marcaje de invitado (modo control de acceso)
+Public Sub setAccessControlMode(canbe As Boolean)
+    permiteinvitado = canbe
+End
+'' modo control de acceso activado? verificar si se permiten marcaje y registros de invitodos
+Public Sub itsAccessControlMode() As Boolean
+    Return permiteinvitado
+End
+
 
