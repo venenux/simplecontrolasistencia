@@ -1,0 +1,337 @@
+' Gambas module file
+
+' LICENSIADO GPLv2+ revisar en la FSF terminos de la licensia
+' AUTORIA PICCORO Lenz McKAY <mckaygerhard@gmail.com>
+' 
+' 37.10.254.20/proyectos/proyectos/projects/sistemasasistencia/wiki/Servicioasistencia
+' 
+' modulo de sincronizacion, 
+' 
+' IMPORTANTE, este archivo debe ser igual entre los proyectos
+' 
+' fuente: www.debian.org/mirror/push_server
+' 
+' variante1: sysasisdaemonop
+' variante2: interfazcontrolasistencia
+' 
+
+Private preserve_times As String = " -t"        ' * preservar las fechas del archivo original
+Private preserve_perms As String = " -p"        ' * preservar permisos del archivo original
+Private preserve_group As String = " -g"        ' * preservar grupo comun del archivo original
+Private ejecutar_detal As String = " -v"        ' * ejecutar detallado, para revision de fallos
+Private ejecutar_limpi As String = " -q"        ' * ejecutar silencioso y sin muchas lineas
+Private ejecutar_compr As String = " -z"        ' * ejecutar envios comprimidos en la red
+Private progreso_mostr As String = " --progress" ' mostrar progreso de cada archivo si va por red
+Private progreso_parci As String = " --partial" ' dejar el archivo si no se completo
+Private deleteon_desti As String = " --delete"  ' borrar archivos en el destino (no recomendado)
+Public limitebw_ejecu As String = 20           ' opcion para limitar trafico
+Public portserv_numbr As Integer = 4538        ' numero del puerto por defecto al que se conectar u/o correra el demonio
+
+Private filelock_daemo As String = "/tmp/simpleasisrsyncd.lock"
+Private fileopid_daemo As String = "/tmp/simpleasisrsyncd.pid"
+Private namefile_secre As String = ".simpleasisrsyncd.secrets" 
+Private namefile_confi As String = ".simpleasisrsyncd.conf" 
+Private namefile_loggi As String = ".simpleasisrsyncd.log" 
+Private nameuser_rsync As String = "sysasis"
+Private pathfile_files As String = User.Home & "/"
+
+Private executab_rsync As String = "rsync"      ' nombre commando ejecutable rsync
+Private commando_rsync As String = "/usr/bin/" & executab_rsync ' commando a correr rsync
+Private commando_daemon_start As String
+Private commando_daemon_stop As String
+
+Private configurado As Boolean = False      ' semaforo de configuracion
+
+'' Esta función determina si existe permiso de lectura en la ruta dada 
+Public Function ComprobarAccesoLectura(ruta As String) As Boolean
+    Return Access(ruta, gb.Read)
+    Catch
+        Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+        Return False
+End
+
+'' Esta función determina si existe permiso de escritura en la ruta dada 
+Public Function ComprobarAccesoEscritura(ruta As String) As Boolean
+    Return Access(ruta, gb.Write)
+    Catch
+        Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+        Return False
+End
+
+'' configuracion automatica de servicios, la clave inicialmente esta en "" o vacia
+Public Sub confDaemons(Optional clave As String = "") As Integer
+
+    Dim daemo As String = " --daemon"
+    Dim limit As String = " --bwlimit=" & limitebw_ejecu
+    Dim port As String = " --port=" & portserv_numbr
+    Dim filec As String = " --config=" & pathfile_files & namefile_confi
+    Dim filel As String = " --log-file=" & pathfile_files & namefile_loggi
+    
+    If Not Exist(commando_rsync) Then
+        commando_rsync = "/usr/local/bin/" & executab_rsync
+        If Not Exist(commando_rsync) Then
+            Print "Error: El software de sincronismo no esta instalado - rsync - sin sincronizar/replicar"
+            Return -1
+        Endif
+    Endif
+    If configurado == False Then
+        madeRsyncConfig()       ' actualmente no genera una clave por ende cualqueira se puede conectar
+        madeRsyncSecres(clave)  ' este crea una clave segun parametro, por defecto igual al usuario
+    Endif
+    commando_daemon_start = "/sbin/start-stop-daemon --start --quiet --oknodo  --pidfile " & fileopid_daemo & " --exec " & commando_rsync & " -- " & daemo & port & limit & filec & filel
+    commando_daemon_stop = "/sbin/start-stop-daemon --stop  --quiet --oknodo  --pidfile " & fileopid_daemo & " --exec " & commando_rsync & " --retry 3 -- " & daemo & port & limit & filec & filel
+    Return 0
+
+End
+
+'' sincroniza los ficherosn en "~/Www/renew" segun los parametros, donde el nombre del fichero y la fecha se toman al dia
+'' filename sera ".scanerguidbYYYYMMDD.db" si no se especifica
+'' sourceip sera 37.10.254.20 si no se especifica
+'' destino sera "~/tmp" si no se especifica
+'' origen sera "~/Www/renew/" en el lado remoto si no se especifica
+'' usermod es "sysasismod" si no se especifica
+'' usersync es "sysasis" si no se especifica
+'' codger es vacio o "" si no se especifica ya que la db origen es estandar para todos los puntos (codger o lugar)
+Public Function initAndGetFromNode(Optional filename As String = "", Optional sourceip As String = "", Optional destino As String = "", Optional origen As String = "", Optional usermod As String = "", Optional codger As String = "", Optional usersync As String = "", Optional clave As String = "") As Boolean
+    
+    Dim xfiles As String = preserve_times & preserve_group & preserve_perms
+    Dim xcomp As String = ejecutar_compr
+    Dim xport As String = " --port=" & portserv_numbr
+    
+    Dim dbnamebase As String = ".scanerguidb"
+    Dim fechanterior As Integer
+    Dim fechaactual As Integer
+    Dim respuesta As String
+    Dim procesoshel As Boolean = False
+    Dim useclave As String = ""
+    Dim ejecucion As String = ""
+    
+    fechaactual = Val(Format$(Now, "yyyymmdd"))
+    fechanterior = fechaactual
+    
+    If Comp(Trim(filename), "", gb.IgnoreCase) == 0 Then
+        filename = dbnamebase & fechaactual & codger & ".db"    ' el archivo se toma sin codger
+    Endif
+    If Comp(Trim(sourceip), "", gb.IgnoreCase) == 0 Then
+        sourceip = "37.10.254.20"
+    Endif
+    If Comp(Trim(origen), "", gb.IgnoreCase) == 0 Then
+        origen = "/Www/renew/"                  ' origen en cliente es distinto en servicio, nota TODO: NAME? o id?
+    Endif
+    If Comp(Trim(destino), "", gb.IgnoreCase) == 0 Then
+        destino = User.Home & "/tmp"
+    Endif
+    If Comp(Trim(usersync), "", gb.IgnoreCase) == 0 Then
+        usersync = "sysasis"
+    Endif
+    If Comp(Trim(usermod), "", gb.IgnoreCase) == 0 Then
+        usermod = "sysasismod"
+    Endif
+    If Comp(Trim(clave), "", gb.IgnoreCase) <> 0 Then
+        useclave = "export RSYNC_PASSWOR=" & clave & "; " 
+    Endif
+    
+    Print "Notificacion - Sincronizando a las " & Format$(Now, "hh:mm") & " ... \n"
+    
+    While procesoshel == False
+        Shell "mkdir -p " & destino
+        ejecucion = useclave & commando_rsync & xcomp & xfiles & xport & " -v " & executab_rsync & "://" & usersync & "@" & sourceip &/ usermod & origen & filename & " " & destino & filename & "  2>&1"
+        Print "Notificacion - " & ejecucion
+        Shell ejecucion To respuesta
+        If InStr(respuesta, "error") > 1 Or InStr(respuesta, "failed") > 1 Then
+            Print "Advertencia - fallo para " & fechanterior & " reintentando otro dia..."
+            procesoshel = False
+            If Val(Format$((Now), "dd")) > 1 Then
+                fechanterior = fechanterior - 1
+                filename = dbnamebase & fechanterior & codger & ".db"   ' el archivo se sigue tomando sin codger
+            Endif
+            If fechanterior < fechaactual - 3 Then
+                procesoshel = True
+                Break
+            Endif
+        Else
+            procesoshel = True
+        Endif
+    Wend
+    If procesoshel Then
+        Print "Notificacion - intentando traer a las " & Format$(Now, "hh:mm") & " archivo: " & destino & filename & " desde " & sourceip
+    Endif
+    If Exist(destino & filename) Then
+        Return True
+    Else
+        Return False
+    Endif
+End
+
+'' origen : ruta EN EL MODULO RSYNC completa donde vera los archivos que se descargara
+'' destino : ruta local donde colocara los archivos al descargar directamente
+'' clave : clave de admin enrolado de cada interfaz, igual para todas cada hora (no usado en automatismo)
+'' codger : se adiciona al archivo al descargar, si se especifica, se usa al descargar tambien
+Public Function startRsyncRegistrerNode(Optional origen As String = "", Optional destino As String = "", Optional clave As String = "", Optional codger As String = "") As Integer
+
+    Dim limit As String = " --bwlimit=" & limitebw_ejecu
+    Dim port As String = " --port=" & portserv_numbr
+    Dim optfi As String = preserve_times & preserve_group & preserve_perms
+    Dim optex As String = ejecutar_detal & ejecutar_compr
+    Dim respshell As String ' usado para obtener lecturas desde comandos
+    Dim hFile As File       ' abstrancion objeto del archivo pid para ver si hay ejecutando algo
+    Dim wline As String
+    Dim procesos As String[]
+    Dim shlin As Integer
+    
+    If Comp(Trim(origen), "", gb.IgnoreCase) == 0 Then
+        origen = User.Home & "/Www/renew/"
+    Endif
+    If Comp(Trim(destino), "", gb.IgnoreCase) == 0 Then
+        destino = User.Home & "/Www/regis/"
+    Endif
+    
+    Print "Notificacion - Configurando demonios (Ave Maria Purissimaaa!)..."
+    respshell = confDaemons()
+    If Val(respshell) == -1 Then
+        configurado = False
+        Return -1       ' el mensage ya esta en la subrutina de configuracion
+    Endif
+    If Val(respshell) == 0 Then
+        configurado = True
+    Endif
+    Print "Notificacion - Verificando demonios huerfanos impertinentes que matar..."
+    Shell "mkdir -p " & origen & "; mkdir -p " & destino
+    Shell "ps -lxa | grep " & commando_rsync & " 2>&1 " To respshell
+    procesos = Split(respshell, "\n")
+    For shlin = 0 To procesos.length - 1
+        If InStr(wline, "daemon") > 1 Then
+            Shell "killall " & commando_rsync
+        Endif
+    Next
+    stoptRsyncDaemons()
+    Print "Aviso - Iniciando servicio de sincronizacion y replicado..."
+    Shell commando_daemon_start 
+    Return 0
+
+End
+
+'' arranca un demonio solo si ya se realizo la configuracion
+Public Sub startRsyncDaemons() As Integer
+    If configurado == True Then
+        Shell commando_daemon_start
+    Else
+        Print "Error - intentando iniciar el demonio de sincronismo sin antes haber configurado, no se inicia"
+    Endif
+End
+
+'' detiene un demonio de sincronismo si ya existe y esta iniciado, depende de haberse preconfigurado
+Public Sub stoptRsyncDaemons(Optional initial As Boolean = False) As Integer
+
+    Dim respshell As String ' usado para obtener lecturas desde comandos
+    Dim hFile As File       ' abstrancion objeto del archivo pid para ver si hay ejecutando algo
+    Dim wline As String
+    Dim procesos As String[]
+    Dim shlin As Integer
+
+    confDaemons()
+    If Exist(fileopid_daemo) Then
+        hFile = Open fileopid_daemo For Read
+        Seek #hFile, 0
+        Line Input #hFile, wline    ' Pid de seguridad verificado, (wline) matandolo por salido
+        Shell commando_daemon_stop 
+        Wait 2                      ' el script tarda un poco y hay que esperar termine el demonio
+        Exec ["kill", "-9", wline] For Read
+        If Exist(fileopid_daemo) Then
+            Print "matando demonio extra (en lo posible).. intentando matar " & wline
+            Shell "rm -f " & fileopid_daemo
+        Endif
+        respshell = 0
+    Else
+        If initial Then
+            respshell = 2
+        Else
+            respshell = 0
+        Endif
+    Endif
+    Return respshell
+Catch
+    Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+    Return 1
+
+End
+
+'' fabricacion de archivo config de servicio de sincronizacion de asistencia. 
+'' Autor: Fenix <tyron.lucero@gmail.com>
+Public Function madeRsyncConfig(Optional ruta_archivos As String = "") As Integer
+
+    Dim files As String = "     secrets file = " & pathfile_files & namefile_secre
+    Dim filel As String = "lock file = " & filelock_daemo
+    Dim filep As String = "pid file = " & fileopid_daemo
+    Dim filec As String = pathfile_files & namefile_confi
+    Dim pathf As String = User.Home & "/Www/"
+    Dim f1 As File
+    Dim escrito As Integer = 1
+
+    If Comp(ruta_archivos, "", gb.IgnoreCase) == 0 Then
+        pathf = User.Home & "/Www/"
+    Else
+        pathf = ruta_archivos
+    Endif
+    
+    If Not Exist(filec) Then
+        Print "Configurando archivo de sincronizacion: " & filec
+    Endif
+    
+    If ComprobarAccesoEscritura(User.home) Then ' si se puede escribir en la ruta, escribe el archivo
+        f1 = Open filec For Write Create    'abrir el archivo para escritura, si no existe se crea, si existe se sobrescribe
+        Print #f1, filel
+        Print #f1, filep
+        Print #f1, "Max connections = 100"
+        Print #f1, ""
+        Print #f1, "[sysasismod]"
+        Print #f1, "     path = " & pathf & "/"
+        Print #f1, "     use chroot = false"
+        Print #f1, "     comment = sysasis"
+        Print #f1, "     uid = nobody"
+        Print #f1, "     gid = nobody"
+        Print #f1, "     read only = yes"
+        Print #f1, "     list = yes"
+        'Print #f1, "     auth users = " & nameuser_rsync
+        'Print #f1, files
+        Close #f1
+        escrito = 0 ' todo está correcto
+    End If
+    Return escrito
+Catch
+    Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+    Return 1
+
+End
+
+'' configuracion de claves para servicio de sincronizacion de asistencia, clave y usuario unico
+Public Function madeRsyncSecres(Optional clave As String = "") As Integer
+
+    Dim files As String = pathfile_files & namefile_secre
+    Dim f1 As File
+    Dim escrito As Integer = 1
+    If Not Exist(files) Then
+        Print "Configurando archivo de claves con usuario unico: " & files
+    Endif
+    If Comp(Trim(clave), "", gb.IgnoreCase) == 0 Then
+        clave = nameuser_rsync & ".1"
+    Endif
+    ' verificar si hay se puede escribir en la ruta
+    If ComprobarAccesoEscritura(User.home) Then     'abrir para escritura, si no existe se crea, si existe se sobrescribe
+        f1 = Open files For Write Create
+        Print #f1, nameuser_rsync & ":" & clave
+        escrito = 0 ' todo está correcto
+        Close #f1
+        Shell "chmod 600 " & files
+    End If
+    configurado = True
+    Return escrito
+    Catch
+        Debug ("ERROR-> [ " & Error.Text & ":" & DConv(Error.Text) & " ] ")
+        Return 1
+End
+
+'' ofrece el nombre del usuario al cual se puede conectar al sevicio de sincronizacion
+Public Function getNameUserRsync() As String
+    Return nameuser_rsync
+End

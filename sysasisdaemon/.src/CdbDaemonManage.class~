@@ -1,0 +1,266 @@
+' Gambas class file
+
+'' abstraccion de la conexion de postgres punto central, vea <strong>conectarPg(host,userdb,clavdb,dbname,dbtype)<strong>
+Private conps As Connection = Null
+'' abstraccion de la conexion de sqlite punto asistencia, vea <strong>conectarSq(ruta, dbname[fecha])<strong>
+Private consq As Connection = Null
+'' estado de conexion unica de la base da datos punto central, solo use internamente
+Private conec As Boolean = False
+
+
+'' conexion a la base de datos postgres/mariadb segun los parametros establecido (actualmente solo conecta postgres)
+Public Function conectarPg(Optional host As String = "localhost", userdb As String = "systemas", clavdb As String = "systemas", dbname As String = "sysasistencia", dbtype As String = "postgresql") As Connection
+
+    If Not IsNull(conps) Then
+        If conps.Opened Then
+            If Comp(conps.Host, host) == 0 Then
+                If Comp(conps.Name, dbname) == 0 Then
+                    If Comp(conps.Type, dbtype) == 0 Then
+                        Print "Advertencia - empleando la conexcion ya establecida.. la conexcio a db ya existe."
+                        conec = True
+                        Return conps
+                    Endif
+                Endif
+            Else                ' si la coneccion existe y es suficiente, la usa
+                conps.Close     ' sino la invalida para fabricarla
+                conps = Null    ' esto es la simulacion de destruccion del objeto, antes de new abajo
+                Print "Advertencia - conexcion distinta a la deseada, invalidando para reconectar una nueva como se require."
+            Endif
+        Endif
+    Endif
+    
+    conps = New Connection  'creamos la instancia de la conexion
+    conps.Type = dbtype
+    conps.Name = dbname     ' 1) abrir conexcion con el usuario y clave actual a la base datos actual
+    conps.host = host
+    conps.Port = 5432
+    conps.User = userdb
+    conps.Password = clavdb
+    Try conps.Open          ' primer intento, si son incorrectos lo unico solventable es fabricar la db inexistente
+    If Error Then           ' si no hay db la trato crear, pero sino error es inmanejable
+        Print "Error - \"" & Error.Code & " " & Error.Text & "\"; intentando solucion alterna"
+        Sleep 1
+        conps.Close         ' se hace una manipulacion macabra 
+        conps.Name = "postgres"     ' en postgres la conexcion debe ser contra una db, igual que oracle
+        Sleep 1
+        Try conps.Open
+        Sleep 1             ' dejamos espacio a la operacion I/O si se arranco a cambio de dia justico
+        If Error Then       ' si no hay db la trato crear, pero sino error es inmanejable
+            Print "Error - \"" & Error.Code & " " & Error.Text & "\"; no se pudo fabricar la db, no mas soluciones"
+            Sleep 1
+            conps.Close     ' se hace una manipulacion macabra 
+            conps = Null
+            conec = False
+            Return conps    ' retorna vacio, no hay mas soluciones
+        Else
+            Print "Advertencia - conectando a sistema para rescatar: " & dbname & userdb & dbtype
+            If Not conps.Databases.Exist(dbname) Then  'Si no existe la B.D. la creamos"
+                conps.Databases.Add(dbname)
+                Sleep 1         ' elproceso de creacion tarda (operacion I/O) asi que esperamos ocurra
+                conps.Close     ' pero INTENTA CREAR LA BD AUNQUE NO TENGA TABLAS
+                conps.Name = dbname
+            Else
+                conps.Close     ' segundo reintento de conexcion (quien sabe seguro fue un teipe del ruso en el internet)
+                conps.Name = dbname
+            Endif
+            Sleep 1
+        Endif
+        Try conps.Open
+        If Error Then       ' a ester punto no hubo permisos de creacion, error es inmanejable
+            Print "Error - \"" & Error.Code & " " & Error.Text & "\"; no se pudo crear ni conectar a " & dbname & "."
+            Sleep 1
+            conps.Close     ' se hace una manipulacion macabra 
+            conps = Null
+            conec = False
+            Return conps    ' retorna vacio, no hay mas soluciones
+        Else
+            Print "Notificacion - conexcion exitosametne rescatada: " & dbname & userdb & dbtype
+            conec = True
+            Return conps    ' no hubo problema retorno la conexcion para que se use
+        Endif
+    Else
+        conec = True
+        Print "Notificacion - conexcion establecia segun requerido: " & dbname & userdb & dbtype
+        Return conps
+    Endif
+End
+
+'' desconecta de la clase toda conecion (ps o sq) e invalidad toda conexion a abas base de datos
+Public Sub closeConnection()
+    If consq.Opened Then
+        consq.Close
+    Endif
+    If conps.Opened Then
+        conps.Close
+    Endif
+    conps = Null
+    consq = Null
+    Print "Advertencia - todas las conexciones existentes eliminadas para la instancia."
+End
+
+'' verifica que realmente esta abierta la conexcion central OP no solo por opened sin que la instancia del objeto tambien este marcado abierto
+Public Function itsConection() As Boolean
+    If Not IsNull(conps) Then
+        If conps.Opened Then
+            Return True
+        Else
+            Return False
+        Endif
+    Else
+        Return False
+    Endif
+End
+
+'' obtener conexcion de la instancia pero a la db central postgres
+Public Function getConectionPg() As Connection
+    Return conps
+End
+
+'' obtener conexcion de la instancia pero a la db sqlite al archivo actual
+Public Function getConectionSq() As Connection
+    Return consq
+End
+
+
+'' conecion a la base de datos remota sqlite, esta no se maneja, simplemente si esta se usa sino no se maneja, dado dicho manejo de errores debe ser llevado por el mismo demonio de sincronismo
+Public Function conectarSq(Optional ruta As String = User.Home, dbname As String = ".scannerguidb" & Format$(Now, "yyyymmdd") & ".db") As Connection
+    
+    If consq.Opened Then    ' con sqlite es un archivo, esto es delicado por ende:
+        consq.Close     ' invalido la presente, puesto se requiere la que se invoca por parametros
+    Endif
+    consq = Null        ' esto es la simulacion de destruccion del objeto, antes de new abajo
+    
+    If Exist(ruta &/ dbname) Then
+        consq = New Connection  'creamos la instancia de la conexion
+        consq.Type = "sqlite3"
+        consq.Name = dbname     ' 1) abrir conexcion con el archivo especificado
+        consq.host = ruta
+        Try consq.Open          ' primer intento, si son incorrectos lo unico solventable es fabricar la db inexistente
+        If Error Then           ' 2) si no hay db la trato crear, pero sino error es inmanejable
+            Print "Error - \"" & Error.Code & " " & Error.Text & "\"; "
+            Sleep 1
+            consq.Close         ' se hace una manipulacion macabra 
+            consq = Null
+        Endif
+    Else
+        Print "Error - no existe el archivo de base de datos " & ruta &/ dbname & ", sincronizacion fallo?"
+    Endif
+    Return consq            ' sea cual sea el problema retorno el rsultado en la conexion misma
+End
+
+
+'' fabrica la tabla de ip de lugares de maquinas si esta no existe
+Public Sub sysasis_init_lugar(Optional lugar As String = "999")
+    ' Create TABLE sysasis_lugar(
+    '     cod_lugar VARCHAR(20) Not Null,
+    '     cod_ip VARCHAR(20),
+    '     codger VARCHAR(20),
+    '     des_lugar VARCHAR(80),
+    '     fec_actualizacion DATE,
+    '     cod_usuasys VARCHAR(20)
+    ');
+    ' Tabla de lugares respecto direcciones ip para las maquinas
+    Dim hTable As Table
+    Dim wTable As Result
+    If conec Then
+        If Not conps.Tables.Exist("sysasis_lugar") Then
+            hTable = conps.Tables.Add("sysasis_lugar")
+            With hTable.Fields
+                .Add("cod_lugar", db.String, 20, lugar)   ' ubicacion(tienda)a la que pertenece, es CODGER por ejemplo
+                .Add("cod_ip", db.String, 20)   ' nombre de ubicacion (codger concatenado con el nombre geografico alais de la tienda o oficina)
+                .Add("codger", db.String, 20)   ' codger igual que (tienda)a la que pertenece, es CODGER por ejemplo
+                .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
+                .Add("cod_usuasys", db.String, 20, "systemas")   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+            End With
+            hTable.PrimaryKey = ["cod_lugar"] ' no es necesario , es solo lectura
+            hTable.Update
+            Print "advertencia - tabla fabricada, y creada: " & Error.Code & " " & Error.Text
+        Endif
+        If conps.Tables.Exist("sysasis_lugar") Then
+            wTable = conps.Find("sysasis_lugar", "cod_lugar = &1", lugar)
+            If Not wTable.Available Then
+                wTable = conps.Create("sysasis_lugar")
+                wTable!cod_lugar = lugar
+                wTable!cod_ip = "localhost"
+                wTable!codger = lugar
+                wTable.Update
+            Endif
+            Print "advertencia - tabla esta, actualizado lugar default: " & Error.Code & " " & Error.Text
+        Endif
+    Else
+        Print "error - no hay conexion presente: " & Error.Code & " " & Error.Text
+    Endif
+End
+
+'' inicializacion de registros en la DB, si no existe en DB la tabla de registros la crea
+Public Sub sysasis_init_registro(Optional lugar As String = "999")
+    
+    ' - - tabla de registros del horario de trabajo, es usada para enviar a OP y registrar los horarios laborados
+    ' Create TABLE sysasis_registro(
+    '   cod_ficha VARCHAR(20) Not Null, - - ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+    '   cod_lugar VARCHAR(20) Not Null, - - nombre de ubicacion(tienda o sobrenombre) en la que labora
+    '   cod_gerencia VARCHAR(20) Not Null, - - ubicacion(tienda)a la que pertenece
+    '   fec_registro Date Not Null, - - fecha del registro de dia a laborar sin hora, indica solo el dia
+    '   num_contador INTEGER Not Null Default 0, - - contador de fotos, si va a distintos lugares debe marcar salida
+    '   horaentrada INTEGER Null, - - hora de entrada del dia
+    '   minuentrada INTEGER Null, - - minuto de entrada en dicha hora
+    '   horadescanso INTEGER Null, - - hora de descanso del dia
+    '   minudescanso INTEGER Null, - - minuto de descanso en dicha respectiva hora
+    '   horareincor INTEGER Null, - - hora que se reincorpora del descanso
+    '   minureincor INTEGER Null, - - minuto de reincorporacion de dicha hora
+    '   horasalida INTEGER Null, - - hora de salida del dia laborado
+    '   minusalida INTEGER Null, - - minuto de salida de dich hora
+    '   hex_huelladactilar BLOB Not Null, - - opcional, huella dactilar del usuario/trabajado ficha, opcional, es HEXFING
+    '   hex_fotocara BLOB Not Null, - - opcional, foto de la cara es OPCIONAL y no necesario
+    '   fec_actualizacion Date Null, - - fecha en que se altero los datos de esta tabla por ultima vez NOTA FUNCIONA CON DEFAULT NOW
+    '   cod_usuasys VARCHAR(20)Null, - - codigo / usuario que altero los datos por ultima vez
+    '   PRIMARY KEY(cod_ficha, fec_registro, cod_gerencia),
+    '   - - si el personal es muy movido, tendra registros en distintas ubicaciones,
+    '   - - el ubicacion ayuda a descartar duplicados.esto amerita tener un SP que maneje los datos
+    '   - - la expotacio se realizara en un vista que colocara el calculo de las horas y
+    '   - - estos registros "dispersos"(ejemplo, entro en castellana, su primera salida debe ser de castellana antes de ir a otro lado)
+    '   - - diferencia entre registro no puede ser menor a 1 / 3 hora y mayor a 6 horas CUANDO SEAN SELLOS DISTINTOS
+    
+    ' Porque dos columnas de fecha? : porque la segunda es por defecto la fecha y hora actual, si alguien manipula, se registra
+    ' lo que significa que si alguien inserta alguna hora de trabajo a mano, se vera la trampa si no ejecuta completo el query
+    
+    Dim hTable As Table
+    Dim wTable As Result
+    If conec Then
+        If Not conps.Tables.Exist("sysasis_registro") Then
+            hTable = conps.Tables.Add("sysasis_registro")
+            With hTable.Fields
+                .Add("cod_ficha", db.String, 20)   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+                .Add("cod_lugar", db.String, 20, lugar)   ' nombre de ubicacion(tienda o sobrenombre) en al que labora/trabaja o se enrolo
+                .Add("cod_gerencia", db.String, 20)   ' ubicacion(tienda)a la que pertenece es CODGER por ejemplo
+                .Add("fec_registro", db.String,, Val(Format$(Now, "mmddhh")))   ' fecha del registro de dia de su huella dactilar
+                .Add("num_contador", db.Integer,, 0)      ' contador de fotos, si va a distintos lugares debe marcar salida = 4
+                .Add("horaentrada", db.Integer,, 0)      '
+                .Add("minuentrada", db.Integer,, 0)      '
+                .Add("horadescanso", db.Integer,, 0)      '
+                .Add("minudescanso", db.Integer,, 0)      '
+                .Add("horareincor", db.Integer,, 0)      '
+                .Add("minureincor", db.Integer,, 0)      '
+                .Add("horasalida", db.Integer,, 0)      '
+                .Add("minusalida", db.Integer,, 0)      '
+                .Add("hex_huelladactilar", db.Blob,, Null)  ' opcional, huella dactilar del usuario/trabajado ficha, opcional, es HEXFING
+                .Add("hex_fotocara", db.Blob,, Null)  ' foto de la cara del usuario/trabajado ficha, OPCIONAL
+                .Add("fec_actualizacion", db.Date,, Now)   ' fecha del registro de dia de su huella dactilar
+                .Add("cod_usuasys", db.String, 20, "systemas")   ' ficha / cedula / id del trabajador NOTA ESTE NO ES CI, en VNZ es CI
+            End With
+            hTable.PrimaryKey = ["cod_ficha", "cod_lugar", "cod_gerencia", "fec_registro"]
+            hTable.Update
+            If Error Then
+                Print "Error - no se puede corroborar la tabla verifique esto: " & Error.Code & " " & Error.Text
+            Else
+                Print "Advertencia - no se puede corroborar, parece la tabla existe: " & Error.Code & " " & Error.Text
+            Endif
+        Else
+            Print "Advertencia - no se puede corroborar, parece la tabla existe: " & Error.Code & " " & Error.Text
+        Endif
+    Else
+        Print "Error - no hay conexion presente: " & Error.Code & " " & Error.Text
+    Endif
+    
+End
+

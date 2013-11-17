@@ -1,0 +1,31 @@
+# Gambas Project File 3.0
+# Compiled with Gambas 3.4.0
+Title=sysasisdaemonop
+Startup=MMain
+Icon=data/venenux.png
+Version=1.0.0
+Component=gb.compress
+Component=gb.crypt
+Component=gb.data
+Component=gb.db
+Component=gb.db.mysql
+Component=gb.db.postgresql
+Component=gb.db.sqlite3
+Component=gb.settings
+Component=gb.net
+Component=gb.net.curl
+Component=gb.vb
+Description="demonio para manterner sincronizado los puntos de asistencias respecto el punto central, asi los puntos administrativos podran estar al tanto de los cambios remotos en un solo nodo consolidado"
+Authors="\"FENIX\" Tyrone Lucero <tyrone.lucero@gmail.com>\nPICCORO Lenz McKAY <mckaygerhard@gmail.com>"
+TabSize=4
+Translate=1
+Language=es
+Maintainer=general
+Address=general@dyd
+License=General Public License
+PackageName=sysasisdaemonop-1.0.0
+Packager=1
+Systems=debian
+Menus=debian:"Applications/System/Administration"
+Categories=debian:"System"
+Groups=debian:"admin"

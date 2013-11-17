@@ -1,0 +1,216 @@
+' Gambas module file
+
+' Gambas module file, DDataDaemon
+' preparacion de una instancia de abstraccion de la configuracion de los parametros del servicio
+' NOTA la instancia se debe reusar, no crear dentro del hilo
+' LICENSIADO GPLv2+ revisar en la FSF terminos de la licensia
+' AUTORIA PICCORO Lenz McKAY <mckaygerhard@gmail.com>
+
+Public Sub prepararporconfiguracion() As DDataDaemon
+    
+    Dim ubino As Integer = 0, codgno As Integer = 0, camno As Integer = 0
+    Dim messageinfo As String = ""
+    
+    Dim configuracion As Settings 
+    
+    Dim datos As New DDataDaemon
+    
+    ' esto solo funciona en entorno de desarrollo, cuanedo se lanza desde la ide
+    If Not Exist(User.Home &/ ".simpleasisdaemon.conf") Then
+        Try Copy "simpleasisdaemon.conf" To User.Home &/ ".simpleasisdaemon.conf"
+    Endif
+    
+    ' en cualquier caso, esto solo es en desarrollo, en produccion, creara un archivo nuevo vacio
+    configuracion = New Settings(user.Home & "/.simpleasisdaemon.conf")
+    
+    If IsNull(configuracion["origenes/rutacsvorigen", Null]) Then
+        camno = 1
+        If Exist(User.Home &/ "tmp") Then
+            datos.setRutacsvOrigen(User.Home &/ "tmp")
+        Else
+            datos.setRutacsvOrigen("/tmp")
+        Endif
+    Else
+        datos.setRutacsvOrigen(configuracion["origenes/rutacsvorigen"])
+    Endif
+    
+    If IsNull(configuracion["origenes/rutacsvregist", Null]) Then
+        camno = 1
+        If Exist(User.Home &/ "tmp") Then
+            datos.setRutacsvRegist(User.Home &/ "tmp")
+        Else
+            datos.setRutacsvRegist("/tmp")
+        Endif
+    Else
+        datos.setRutacsvRegist(configuracion["origenes/rutacsvregist"])
+    Endif
+    
+    If IsNull(configuracion["origenes/tipo", Null]) Then
+        Print "Advertencia - No definido formatos de ficheros, usando archivos tipo csv"
+        datos.setFormatosFiles("csv")
+    Else
+        datos.setFormatosFiles(configuracion["origenes/tipo"])
+    Endif
+    
+    If IsNull(configuracion["origenes/compresa", Null]) Then
+        Print "Advertencia - Compresion/cryto no definido, usandose y asumiendose por defecto"
+        datos.setListaCompresa("bzlib2")
+    Else
+        datos.setListaCompresa(configuracion["origenes/compresa"])
+    Endif  
+    
+    If IsNull(configuracion["database/dbtypeop", Null]) Then
+        Print "Advertencia - No definida conexcion central en archivo configuracion"
+        datos.setTypeDBop("postgresql")
+    Else
+        datos.setTypeDBop(configuracion["database/dbtypeop"])
+    Endif
+    
+    If IsNull(configuracion["database/dbtypelo", Null]) Then
+        Print "Advertencia - No definida conexcion asistencias en archivo configuracion"
+        datos.setTypeDBlo("sqlite3")
+    Else
+        datos.setTypeDBlo(configuracion["database/dbtypelo"])
+    Endif
+    
+    If IsNull(configuracion["database/dbnameop", Null]) Then
+        Print "Advertencia - No definida nombre de base de datos en op, usando default sysasistencia"
+        datos.setNameDb("sysasistencia")
+    Else
+        datos.setNameDb(configuracion["database/dbnameop"])
+    Endif  
+    
+    If IsNull(configuracion["database/dbuserop", Null]) Then
+        Print "Advertencia - No definida usuario de base de datos en op, usando default sysasistencia"
+        datos.setUserDb("systemas")
+    Else
+        datos.setUserDb(configuracion["database/dbuserop"])
+    Endif  
+    
+    If IsNull(configuracion["database/dbhostna", Null]) Then
+        Print "Advertencia - No definida ip/dominio de base de datos en op, usando default sysasistencia"
+        datos.setHostOP("37.10.254.20")
+    Else
+        datos.setHostOP(configuracion["database/dbhostna"])
+    Endif  
+    
+    If IsNull(configuracion["database/dbclaveu", Null]) Then
+        Print "Advertencia - No definida clave de base de datos en op, usando default sysasistencia"
+        datos.setClavDb("systemas")
+    Else
+        datos.setClavDb(configuracion["database/dbclaveu"])
+    Endif  
+    
+    ' If IsNull(configuracion["dispositivo/camara", Null]) Then
+    '     camno = 1
+    '     datos.setCamaraDev("/dev/video0")
+    ' Else
+    '     datos.setCamaraDev(configuracion["dispositivo/camara"])
+    ' End If  
+    ' 
+    ' If IsNull(configuracion["dispositivo/tamano", Null]) Then
+    '     Print "Tamano de camara no definido, usando por defecto minimo 320x240"
+    '     datos.setCamaraSize("320x240")
+    ' Else
+    '     datos.setCamaraSize(configuracion["dispositivo/tamano"])
+    ' End If  
+    ' 
+    ' If IsNull(configuracion["conexion/tipo", Null]) Then
+    '     Print "No definida conexcion local en archivo configuracion"
+    '     datos.setContipoLo("sqlite3")
+    ' Else
+    '     datos.setContipoLo(configuracion["conexion/tipo"])
+    ' End If  
+    ' 
+    ' If IsNull(configuracion["origenes/op", Null]) Then
+    '     Print "Origen OP no definido, usando devel por defecto"
+    '     datos.setHostOP("37.10.254.20")
+    ' Else
+    '     datos.setHostOP(configuracion["origenes/op"])
+    ' End If  
+    ' 
+    ' If IsNull(configuracion["origenes/tipo", Null]) Then
+    '     Print "No definido tipo de sincronismo, usando archivo csv"
+    '     datos.setContipoOp("csv")
+    ' Else
+    '     datos.setContipoOp(configuracion["origenes/tipo"])
+    ' End If  
+    ' 
+    ' If IsNull(configuracion["origenes/compresa", Null]) Then
+    '     Print "Compresion/cryto no definido, usandose y asumiendose por defecto"
+    '     datos.setListaCompresa("bzlib2")
+    ' Else
+    '     datos.setListaCompresa(configuracion["origenes/compresa"])
+    ' End If  
+    ' 
+    ' If IsNull(configuracion["modalidad/enrolado", Null]) Then
+    '     Print "Enrolado indirecto aprovacion por nomina usandose, no se definio en configuracon"
+    '     datos.setModoDirecto("activacion")
+    ' Else
+    '     datos.setModoDirecto(configuracion["modalidad/enrolado"])
+    ' End If  
+    ' 
+    ' If IsNull(configuracion["modalidad/verificado", Null]) Then
+    '     Print "Verificado de dedoy cara usandose, no definido en configuracion"
+    '     datos.setModoVerificado("dedoycara")
+    ' Else
+    '     datos.setModoVerificado(configuracion["modalidad/verificado"])
+    ' End If  
+    ' 
+    ' If IsNull(configuracion["modalidad/control", Null]) Then
+    '     Print "Control de acceso habilitado por defecto, redefina en la configuracion"
+    '     datos.setAccessControlMode(True)
+    ' Else
+    '     If Comp(configuracion["modalidad/control"], "T", gb.IgnoreCase) == 0 Or Comp(configuracion["modalidad/control"], "", gb.IgnoreCase) == 0 Then
+    '         datos.setAccessControlMode(configuracion["modalidad/control"])
+    '     Else
+    '         Print "Control de acceso habilitado por defecto, redefina en la configuracion"
+    '         datos.setAccessControlMode(True)
+    '     Endif
+    ' End If  
+    ' 
+    ' If IsNull(configuracion["localidad/ubicacion", Null]) Then
+    '     ubino = 1
+    '     datos.setUbicacionLug("998")
+    ' Else 
+    '     If Comp(configuracion["localidad/ubicacion"], "998", gb.IgnoreCase) == 0 Then
+    '         ubino = 1
+    '     Else
+    '         datos.setUbicacionLug(configuracion["localidad/ubicacion"])
+    '     Endif
+    ' Endif 
+    ' 
+    ' If IsNull(configuracion["localidad/codger", Null]) Then
+    '     codgno = 1
+    '     datos.setUbicacionUsr("999")
+    ' Else 
+    '     If Comp(configuracion["localidad/codger"], "999", gb.IgnoreCase) == 0 Then
+    '         ubino = 1
+    '     Else
+    '         datos.setUbicacionUsr(configuracion["localidad/codger"])
+    '     Endif
+    ' Endif 
+    ' 
+    ' If codgno == 1 Or camno == 1 Or ubino == 1 Then
+    '     messageinfo = "Advertencia - valores perdidos o no vistos en configuracion: "
+    '     If camno == 1 Then
+    '         messageinfo = messageinfo & "\n      * Camara no esta definida en el archivo de configuracion"
+    '     Endif
+    '     If ubino == 1 Then
+    '         messageinfo = messageinfo & "\n      * Ubicacion no definida en el archivo de configuracion"
+    '     Endif
+    '     If codgno == 1 Then
+    '         messageinfo = messageinfo & "\n      * Codigo de ubicacion no definida en el archivo de configuracion"
+    '     Endif
+    '     Print messageinfo
+    ' Endif
+    ' 
+    ' '     #enrolado can be "directo" Or "activacion"
+    ' ' enrolado = "directo"
+    ' ' #verificado can be "dedo", "cara or " dedoycara ""
+    ' ' verificado = "dedoycara"
+    ' ' #modo can be "demo", "auto" Or "connodo", the "connodo" need a post5gresql DB working ina valid ip
+    ' ' modo = "auto"
+    Return datos
+    
+End

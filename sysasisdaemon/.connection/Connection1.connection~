@@ -1,0 +1,8 @@
+# Gambas Connection File 3.0
+[Connection]
+Type="sqlite"
+Path="/tmp"
+RememberPassword=False
+IgnoreCharset=False
+Database=".scanerguidb20131113999.db"
+

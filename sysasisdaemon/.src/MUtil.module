@@ -1,0 +1,15 @@
+' Gambas module file
+
+
+
+'' celdalimpia remueve la comillas simples/dobles de una variable texto delimitada
+Private Sub celdalimpia(celda As String, Optional delimitador As String = "\"") As String
+    If Left$(celda) == "\'" And Right$(celda) == "\'" Then
+        celda = Mid$(celda, 2, -1)      ' inicialmente asumido comilla simple como delimitador
+    Endif
+    If Left$(celda) == delimitador And Right$(celda) == delimitador Then
+        celda = Mid$(celda, 2, -1)      ' analizo si la celda contiene comillas dobles
+    Endif
+    Return celda
+End
+

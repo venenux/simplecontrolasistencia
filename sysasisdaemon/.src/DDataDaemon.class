@@ -1,0 +1,189 @@
+' Gambas class file
+
+' Gambas class file, DDataDaemon
+' contenedor de transporte para gestion de datos a traves de los modulos
+' se crea una nueva instancia con datos nuevos y se revisa en cada ciclo cambiso en la config
+' NOTA la instancia se debe reusar, no crear dentro del hilo
+' LICENSIADO GPLv2+ revisar en la FSF terminos de la licensia
+' AUTORIA PICCORO Lenz McKAY <mckaygerhard@gmail.com>
+
+
+'' ruta archivo consolidado especial
+Private rutacsvorigen As String = "/tmp"
+'' define ruta directorio donde estara archivo consolidado especial para ser leido/tomado, /tmp si no se especifica parametro
+Public Sub setRutacsvOrigen(Optional datab As String = "/tmp")
+    rutacsvorigen = datab
+End
+'' dice cual es la ruta directorio donde estara archivo consolidado especial para ser leido/tomado, /tmp si no se especifica antes
+Public Sub getRutacsvOrigen() As Boolean
+    Return rutacsvorigen
+End
+
+
+'' ruta archivo registros de asistencias para nomina
+Private rutacsvregist As String = "/tmp"
+'' define ruta directorio donde estara archivo consolidado especial para ser leido/tomado, /tmp si no se especifica parametro
+Public Sub setRutacsvRegist(Optional datab As String = "/tmp")
+    rutacsvregist = datab
+End
+'' dice cual es la ruta directorio donde estara archivo consolidado especial para ser leido/tomado, /tmp si no se especifica antes
+Public Sub getRutacsvRegist() As Boolean
+    Return rutacsvregist
+End
+
+
+'' estado que dice si ya inicio DB servidor
+Private dbserverlista As Boolean
+'' define estado de base de datos esta conectado y lista para usarse
+Public Sub setDbServerLista(datab As Boolean)
+    dbserverlista = datab
+End
+'' devuelve True si la base de datos esta lista, false si este o no conectada no es usable
+Public Sub itsDbServerLista() As Boolean
+    Return dbserverlista
+End
+
+
+'' define si se manejara el archivo listado compreso/encriptado
+Private lrzipxz As Boolean
+'' asigna si se manejara compreso o no el archivo de la lista
+Public Sub setListaCompresa(datab As String)
+    If Comp(datab, "bzlib2", 1) == 0 Or Comp(datab, "lrz", 1) == 0 Then
+        lrzipxz = True
+    Else
+        lrzipxz = False
+    Endif
+End
+''
+Public Sub itsListaCompresa() As Boolean
+    Return lrzipxz
+End
+
+
+'' nodo o ip central datos listado de empleados/usuarios
+Private hostop As String = "localhost"
+'' define ip/domain del punto central donde se consolidan los datos, donde se piden las db template de punto asistencia y desde el cual replica a externos, iniciado a localhost si no se define argumento
+Public Sub setHostOP(Optional hostip As String = "localhost")
+    hostop = hostip
+End
+'' dice el ip/domain del punto central de consolidacion de datos, lugar de las db template de punto asistencia y desde el cual replica a externos, iniciado a localhost si no se ha definido aun
+Public Sub getHostOP() As String
+    Return hostop
+End
+
+
+'' usuario de conexion definido en base de datos central
+Private userdb As String = "systemas"
+'' define usuario de conexion definido en base de datos del punto central donde se consolidan los datos, donde se piden las db template de punto asistencia y desde el cual replica a externos, iniciado a systemas como usuario si no se define argumento
+Public Sub setUserDb(Optional entrada As String = "systemas")
+    userdb = entrada
+End
+'' dice el usuario de conexion de la base de datos delpunto central de consolidacion de datos, lugar de las db template de punto asistencia y desde el cual replica a externos, iniciado a systemas como usuario si no se define argumento
+Public Sub getUserDb() As String
+    Return userdb
+End
+
+
+'' clave del usuario de conexion definido en base de datos central
+Private claveb As String = "systemas"
+'' define clave del usuario de conexion definido en base de datos del punto central donde se consolidan los datos, donde se piden las db template de punto asistencia y desde el cual replica a externos
+Public Sub setClavDb(Optional entrada As String = "systemas")
+    claveb = entrada
+End
+'' dice la clave del usuario de conexion de la base de datos delpunto central de consolidacion de datos, lugar de las db template de punto asistencia y desde el cual replica a externos
+Public Sub getClavDb() As String
+    Return claveb
+End
+
+
+'' nombre de la base de datos central en nodo o punto central
+Private namedb As String = "sysasistencia"
+'' define nombre de la base de datos del punto central donde se consolidan los datos, inicialmente sysasistencia si no es definido el argumento
+Public Sub setNameDb(Optional entrada As String = "sysasistencia")
+    namedb = entrada
+End
+'' dice cual es el nombre de la base de datos delpunto central de consolidacion de datos, iniciado a sysasistencia si no ha sido definido antes
+Public Sub getNameDb() As String
+    Return namedb
+End
+
+
+'' typo de engine de base de datos central en nodo o punto central, iniciado a postgresql
+Private typedbop As String = "postgresql"
+'' define typo de engine/software/tipo de base de datos del punto central donde se consolidan los datos, inicial es postgres si no se define el argumento
+Public Sub setTypeDBop(Optional entrada As String = "postgresql")
+    typedbop = entrada
+End
+'' dice cual es el software/tipo base de datos del punto central de consolidacion de datos, si aun no se asigno se inicia a postgres
+Public Sub getTypeDBop() As String
+    Return typedbop
+End
+
+
+'' typo de engine de base de datos local en nodo o punto asistencia, iniciado a sqlite3, opcional sqlite2
+Private typedblo As String = "sqlite3"
+'' define typo de engine/software/tipo de base de datos de cada punto asistencia donde se capturan los datos, inicial es sqlite3 si no se define el argumento
+Public Sub setTypeDBlo(Optional entrada As String = "sqlite3")
+    typedblo = entrada
+End
+'' dice cual es el software/tipo de base de datos de cada punto asistencia donde se capturan los datos, si no se define el argumento, si aun no se asigno se inicia a sqlite3
+Public Sub getTypeDBlo() As String
+    Return typedblo
+End
+
+
+'' ubicacion (codger) del usuario en proceso
+Private ubicacionusuario As String = "998"
+'' asigna la ubicacion (codger) del usuario para manejar
+Public Sub setUbicacionUsr(usuario As String)
+    ubicacionusuario = usuario
+End
+'' obtiene la ubicacion (codger) del usuario para manejar, si no se configuro es 998
+Public Sub getUbicacionUsr() As String
+    Return ubicacionusuario
+End
+
+'' ubicacion de esta maquina, instancia, comunmente un codger pero de la tienda u/o oficina
+Private ubicacion As String = "999"
+'' asigna un codger (cod_lugar) a ubicacion de la maquina que ejecuta la interfaz
+Public Sub setUbicacionLug(ubica As String)
+    ubicacion = ubica
+End
+'' obtiene un codger (cod_lugar) a ubicacion de la maquina/lugar en donde esta correindo, <br>previamente asignada desde configuracion, si no se configuro es 999
+Public Sub getUbicacionLug() As String
+    Return ubicacion
+End
+
+'' tipo de formato de archivos de intercambio de info entre nomina y sistema de asistencia
+Private formatosfiles As String = "csv"
+'' define que formato es el de los archivos de intercambio de info entre nomina y sistema de asistencia, iniciado a csv si no se para argumento
+Public Sub setFormatosFiles(Optional name As String = "csv")
+    formatosfiles = name
+End
+'' obtener que formato es el de los archivos de intercambio de info entre nomina y sistema de asistencia, iniciado a csv si no se ha definido aun
+Public Sub getFormatosFiles() As String
+    Return formatosfiles
+End
+
+'' nombre base del archivo importacion de datos nomina
+Private namefilecsvnomina As String = "ConsolidadoEspecial"
+'' asignar el nombre base archivo exportacion de asistencias, es "ConsolidadoEspecial" si no se da argumento
+Public Sub setArchivoConsoNombreBase(Optional name As String = "ConsolidadoEspecial")
+    namefilecsvnomina = name
+End
+'' obtener el nombre base archivo exportacion de asistencias, es "ConsolidadoEspecial" si no se ha configurado
+Public Sub getArchivoConsoNombreBase() As String
+    Return namefilecsvnomina
+End
+
+'' nombre base del archivo exportar asistencias diaras
+Private namefilecsvasistencia As String = "RegistroAsistencias"
+'' asignar el nombre base archivo exportacion de asistencias, es "RegistroAsistencias" si no se da argumento
+Public Sub setArchivoRegisNombreBase(Optional name As String = "RegistroAsistencias")
+    namefilecsvasistencia = name
+End
+'' obtener el nombre base archivo exportacion de asistencias es "RegistroAsistencias" si no se ha configurado
+Public Sub getArchivoRegisNombreBase() As String
+    Return namefilecsvasistencia
+End
+

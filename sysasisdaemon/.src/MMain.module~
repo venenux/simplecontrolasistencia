@@ -1,0 +1,366 @@
+' Gambas module file
+
+'' objeto para conexion de la db syscenter op postgres (instanciado)
+Public objectps As Connection
+'' objeto para abstracion conexion de archivo db remoto asistencias (archivo unico)
+Public objectsq As Connection
+'' obejto manejador de bases de datos, inicializador de tablas y gestor de inserciones y actualizaciones
+Public dbmanagdat As CdbDaemonManage
+'' hora actual del momento al invocarse un ciclo de importacion/exportacion
+Public horaciclo As String
+'' fecha actual del momento al invocarse un ciclo de importacion/exportacion
+Public fechaactual As String
+'' fecha anterior del dia actual al invocarse un ciclo de importacion/exportacion
+Public fechaanter As String
+'' datos de configuracion leidos del demonio
+Private datos As DDataDaemon
+'' especificacion de nombre base de archvo base de datos de puntos de asistencias : .scanerguidbYYYYMMDDxxx.db
+Public nbasedbnamere As String = ".scanerguidb"
+'' especificaicon de nombre base del archivo generar de registros asistencias, si no se sobreescribe es "dbo_asis_registro"
+Public nbaseregistro As String = "dbo_asis_registro"
+'' especificacion de nombre base de tabla de datos nomina crudos en sistema externo copiada en este sistema "consolidado_especial"
+Public ntablaorigen As String = "consolidado_especial"
+'' flag interno de manejo de el demonio para eventos por irq
+Public estatus As Variant
+
+'' main del programa
+Public Sub Main()
+
+    horaciclo = Format$(Now, "hh:nn:ss")
+    fechaanter = Val(Format$(Now, "yyyymmdd")) - 1
+    fechaactual = Format$(Now, "yyyymmdd")
+    datos = New DDataDaemon
+    datos = MSetDaemon.prepararporconfiguracion()  ' leer la configuracion, ip remota, fecha sincronismos, que actualizar etc
+    iniciarServicios
+    iniciarInterfaz
+    
+    Print "Notificacion - Init daemon sync on " & fechaactual & " a las " & horaciclo
+    ' 1) pedir el fichero CSV dependiendo de el proceso
+    ' 2) leer el fichero y acometerlo en db
+    ' 3) retornar respuesta dependiendo de lectura y procesado
+    While fechaactual <> "7enEdmoz_pa7ryA" ' ciclo infinito como la estupidez misma, pero tenemos patria
+        horaciclo = Format$(Now, "hh:nn:ss")
+        If horaciclo == "23:55:00" Then ' antes del nuevo dia, 10 minutos para poner nueva db sqlite
+        '    importado = importar_archivo(fecha, ".scanerguidb" & fecha & "999" & ".db", "999")
+        End If
+        If horaciclo == "00:01:01" Then ' un minuto despues acometer datos desde nomina por CSV/odbc
+        '    importado = importar_archivo(fecha, ".scanerguidb" & fecha & "999" & ".db", "999")
+        End If
+        If horaciclo == "00:05:01" Then ' despues de nuevo dia intentar 2 db presidencia/exterior
+        '    importado = importar_archivo(fecha, ".scanerguidb" & fecha & "999" & ".db", "999")
+        End If
+        If horaciclo == "00:15:01" Then ' despues 15 minutos, intentar 5 oficinas con mejor conexcion level 3
+        '    importado = importar_archivo(fecha, ".scanerguidb" & fecha & "999" & ".db", "999")
+        End If
+        If horaciclo == "00:40:01" Then ' despues 15 minutos, intentar 5 tiendas con mejor conexcion level 3
+        '    importado = importar_archivo(fecha, ".scanerguidb" & fecha & "999" & ".db", "999")
+        End If
+        If horaciclo == "01:00:01" Then ' despues 45 minutos, intentar 10 tiendas mas conexcion promedio buena aba o level3
+        '    importado = importar_archivo(fecha, ".scanerguidb" & fecha & "999" & ".db", "999")
+        End If
+        If horaciclo == "01:45:01" Then ' despues 45 minutos, intentar 10 tiendas mas conexcion promedio buena aba o level3
+        '    importado = importar_archivo(fecha, ".scanerguidb" & fecha & "999" & ".db", "999")
+        End If
+        If horaciclo == "02:30:01" Then ' despues 45 minutos, intentar 10 tiendas mas conexcion promedio buena aba o level3
+        '    importado = importar_archivo(fecha, ".scanerguidb" & fecha & "999" & ".db", "999")
+        End If
+        If horaciclo == "03:15:01" Then ' despues 45 minutos, intentar 10/5 tienda/galpon mas conexcion promedio buena aba o level3
+        '    importado = importar_archivo(fecha, ".scanerguidb" & fecha & "999" & ".db", "999")
+        End If
+        If horaciclo == "04:00:01" Then ' despues 45 minutos, intentar 5 galpones mas conexcion promedio buena aba o level3
+        '    importado = importar_archivo(fecha, ".scanerguidb" & fecha & "999" & ".db", "999")
+        End If
+        If horaciclo == "05:35:01" Then 'al terminar y consolidar op, fabricar CSV para q nomina consolide
+            generar_registros_asistencias("/var/cache/asist", fechaanter)
+        End If
+        '' metodos para desarrollo
+        'If Format$(Now, "nn") == "52" Then
+            If Format(Now, "ss") == "30" Then
+                importar_registros_asistencias(User.Home &/ "tmp/", fechaanter, "999", "37.10.254.85")
+                generar_registros_asistencias(User.Home &/ "tmp/", fechaanter)
+            Endif
+        'Endif
+    Wend
+    
+End   
+
+'' este proceso inicia y/o prepara los servicios de replicado y sincronismo
+Public Sub iniciarServicios()
+    'MSync.startRsyncRegistrerNode()
+End
+
+'' este proceso inicia y/o prepara el servicio con una conexcion a op permanente en cada rutina, el resto la cierra,  (nunca hay mas de una rutina accediendo al mismo tiempo a base de datos)
+Public Sub iniciarInterfaz()
+    dbmanagdat = New CdbDaemonManage    ' instancio una base de datos
+    dbmanagdat.conectarPg(datos.getHostOP(), datos.getUserDb(), datos.getClavDb(), datos.getNameDb(), datos.getTypeDBop())
+    If dbmanagdat.itsConection() == True Then
+        datos.setDbServerLista(True)
+        estatus = syncronizar(datos.itsListaCompresa(), Null, datos.getArchivoConsoNombreBase(), True)  ' syncronizar crea tabla consolidado_especial y adicional exporta si existe archvio alguno
+        If estatus == -1 Then
+            Print "Error - problemas en gestion de la base de datos, saliendo, porque no esta la estructura correcta"
+            dbmanagdat.closeConnection
+            Quit                        ' si iniciando el listado no se encuentra ningun archivo, la aplicacion sale
+        Endif
+    Endif
+End
+
+
+
+'' sub rutina de consolidacion de todos los registros de asistencias en la base de datos central, toma las db sqlite y acomete sus registros de asistencias en la db central<br> 
+'' @parametro ruta si no especifica es "~/tmp", ruta completa donde se tomara el archivo (ver nbaseregistro)<br>
+'' @parametro fechagenerar inicialmente "now", dia especifico que se generara los datos, adicional es parte del nombre del archvivo db procesar<br>
+'' @parametro codger el codigo de area que representa el lugar, REQUERIDO<br>
+'' @parametro ipcodger ip del codger, esta asociado, REQUERIDO
+Public Sub importar_registros_asistencias(Optional ruta As String = User.home &/ "tmp/", Optional fechagenerar As String = Format$(Now, "yyyymmdd"), Optional codger As String = "999", Optional ipcodger As String = "") As Boolean
+
+    Dim namefiler As String = nbasedbnamere & fechagenerar & codger & ".db"
+    Dim queryverregistros As String = ""                    ' query que se recorre para popular registros en otra tabla
+    Dim queryverificacion As String = ""                    ' query verifica existe el registro
+    Dim tablaensqlite, tablarevista, tablaencentral As Result ' recordset que emula las tablas de la bd
+    Dim registros, registrostot, registrospro As Integer    ' registros procesandose contandolos
+    Dim fec_r, cod_f, cod_l As String
+    Dim resultadoproceso As Boolean
+    Dim archivoregistros As String
+    
+    Print "Notificacion - verificando archivo db asistencias para " & ipcodger & " en " & ruta & namefiler
+    If Not Exist(ruta & namefiler) Then
+        ruta = "/tmp/"
+    Endif               ' intentar traer la base de datos desde el servidor que corresponda, luego se actualizará LOCALMENTE LA DEL SERVIDOR
+    Wait 1
+    If Not Exist(ruta & namefiler) Then
+        Print "Advertencia - archivo no se encontraba para la fecha, trayendo desde localidad " & codger & " " & ipcodger
+        Wait 1
+        MSync.initAndGetFromNode(namefiler, ipcodger, ruta, "/regis/", "", codger, "")
+        Wait 1
+        If Not Exist(ruta & namefiler) Then
+            Print "Error - no se pudo traer archivo " & namefiler & " desde " & ipcodger & " recomendar efectuar ping y verificar interfaz en dicho host"
+            Return False
+        Endif
+    Endif
+ 
+    archivoregistros = ruta & namefiler
+    resultadoproceso = True
+    Print "Notificacion - verificando conexiones bilaterales entre bases de datos " & ipcodger & "@" & namefiler & " y " & datos.getHostOP() & "@" & datos.getNameDb()
+    If Not IsNull(objectsq) Then
+        If objectsq.Opened Then
+            If Comp(objectsq.Name, archivoregistros) <> 0 Then
+                Print "Advertencia - invalidando conexion ajena " & objectsq.Name
+                objectsq.Close
+                objectsq = dbmanagdat.conectarSq(ruta, namefiler)
+            Endif
+        Endif
+    Else
+        objectsq = dbmanagdat.conectarSq(ruta, namefiler)
+    Endif
+    Wait 1
+    If Not IsNull(objectps) Then
+        If objectps.Opened Then
+            If Comp(objectps.Name, datos.getNameDb()) <> 0 Then
+                Print "Advertencia - invalidando conexion ajena " & objectps.Name
+                objectps.Close
+                objectps = dbmanagdat.conectarPg(datos.getHostOP(), datos.getUserDb(), datos.getClavDb(), datos.getNameDb(), datos.getTypeDb())
+            Endif
+        Endif
+    Else
+        objectps = dbmanagdat.conectarPg(datos.getHostOP(), datos.getUserDb(), datos.getClavDb(), datos.getNameDb(), datos.getTypeDb())
+    Endif
+    Wait 1
+    If Not objectsq.Opened Then
+        objectsq = dbmanagdat.conectarSq(ruta, namefiler)
+        If Not objectsq.Opened Then
+            Print "Error - conexion imposible en " & ipcodger & "@" & namefiler
+            Return False
+        Endif
+    Endif
+    If Not objectps.Opened Then
+        objectps = dbmanagdat.conectarPg(datos.getHostOP(), datos.getUserDb(), datos.getClavDb(), datos.getNameDb(), datos.getTypeDb())
+        If Not objectps.Opened Then
+            Print "Error - conexion imposible en " & datos.getHostOP() & "@" & datos.getNameDb()
+            Return False
+        Endif
+    Endif                                       ' inicializo tablas en caso no estuviesen
+    dbmanagdat.sysasis_init_lugar
+    dbmanagdat.sysasis_init_registro
+    queryverregistros = "select * from sysasis_registro" ' llenar el recordset con datos desde bd sqlite
+    tablaensqlite = objectsq.Exec(queryverregistros)
+    registrostot = tablaensqlite.Count
+    registrospro = 0
+    For registros = registrospro To registrostot - 1        ' recorrer cada registro de sqlite, si existe en db central actualizarlo, si no agregarlo
+        fec_r = "'" & tablaensqlite!fec_registro & "'"
+        cod_f = "'" & tablaensqlite!cod_ficha & "'"
+        cod_l = "'" & tablaensqlite!cod_lugar & "'"
+        queryverregistros = "select cod_ficha, fec_registro, cod_lugar from sysasis_registro where fec_registro = " & fec_r  
+        queryverificacion = queryverregistros & " and cod_ficha = " & cod_f & " and cod_lugar = " & cod_l
+        objectps.Begin
+        Try tablarevista = objectps.Exec(queryverificacion)
+        If tablarevista.Available Then      ' entonces ya existe ese registro no lo agrego
+            Print "Registro " & cod_f & cod_l & cod_l & " coincidente encontrado... no se actualiza"
+        Else                            ' no existe ese registro y se agrega
+            ' crear la imagen de la tabla que se va a rellenar 
+            tablaencentral = objectps.Create("sysasis_registro")                   
+            tablaencentral["cod_ficha"] = tablaensqlite["cod_ficha"] 
+            tablaencentral["cod_lugar"] = tablaensqlite["cod_lugar"]
+            tablaencentral["fec_registro"] = get_date(tablaensqlite["fec_registro"]) ' enteipado problema en formato de fechas
+            tablaencentral["cod_gerencia"] = tablaensqlite["cod_gerencia"]
+            tablaencentral["num_contador"] = tablaensqlite["num_contador"] 
+            tablaencentral["horaentrada"] = tablaensqlite["horaentrada"]
+            tablaencentral["minuentrada"] = tablaensqlite["minuentrada"]
+            tablaencentral["horadescanso"] = tablaensqlite["horadescanso"]
+            tablaencentral["minudescanso"] = tablaensqlite["minudescanso"]
+            tablaencentral["horareincor"] = tablaensqlite["horareincor"]
+            tablaencentral["minureincor"] = tablaensqlite["minureincor"]
+            tablaencentral["horasalida"] = tablaensqlite["horasalida"]
+            tablaencentral["minusalida"] = tablaensqlite["minusalida"]
+            tablaencentral["hex_huelladactilar"] = tablaensqlite["hex_huelladactilar"] 
+            tablaencentral["hex_fotocara"] = tablaensqlite["hex_fotocara"]
+            tablaencentral["fec_actualizacion"] = tablaensqlite!fec_actualizacion
+            tablaencentral["cod_usuasys"] = tablaensqlite["cod_usuasys"]
+            Try tablaencentral.Update
+            If Error Then 
+                resultadoproceso = False
+                Print "Error - registro " & cod_f & cod_l & cod_l & " con error " & Error.Code & " " & Error.Text
+                objectps.Rollback       ' nada que hacer  con la BD
+            Else
+                registrospro = registrospro + 1
+                Print "Notificacion - Registro " & cod_f & cod_l & cod_l & " nuevo encontrado... actualizando"
+                objectps.Commit         ' se guarda el cambio en la BD
+            End If 
+        End If
+        tablaensqlite.MoveNext          ' seguimos con el siguiente registro de asistencia
+    Next 'i 
+    If resultadoproceso Then
+        Print "Advertencia - Base de Datos Actualizada. procesados " & registrospro & " de " & registrostot & " registros del dia " & fec_r
+    Else 
+        Print "Error - solo se proceso " & registrospro & " de " & registrostot & ", " & Error.Code & " " & Error.Text
+    End If
+    Return resultadoproceso
+End
+
+'' sub rutina de generacion del CSV de asistencias para sistema externo, REQUIERE una conexcion postgres administrativa (en futuro se modificara sin requerir esto)<br> 
+'' @parametro ruta si no especifica es "~/tmp", ruta completa donde se coloca el archivo (ver nbaseregistro)<br>
+'' @parametro fechagenerar inicialmente "now-1", dia especifico que se generara los datos, adicional es parte del nombre final del archivo CSV<br>
+'' @parametro fechainicial opcionalmente si se especifica, se generara regisros desde esta fecha hasta la rechagenerar
+Public Function generar_registros_asistencias(Optional ruta As String = User.home &/ "tmp/", Optional fechagenerar As String = Str(Format$(Now, "yyyymmdd") - 1), Optional fechainicial As String = "") As Boolean
+
+    Dim namefiler As String = nbaseregistro & "_" & fechagenerar
+    Dim querydump As String = "" 
+    Dim querydata As String = ""
+    
+    If Not Exist(ruta & namefiler) Then
+        ruta = "/tmp/"
+    Endif
+    Print "Notificacion - generacion de registros de asistencias como " & ruta & namefiler
+    querydata = querydata & " Copy ("
+    querydata = querydata & "SELECT cod_ficha AS Ficha_asist, "
+    querydata = querydata & "cod_lugar AS CodGer_asist, "
+    querydata = querydata & "fec_registro AS Fecha_asist, "
+    querydata = querydata & "'1' AS Estado_asist, "
+    querydata = querydata & "horaentrada || substring('00' || minuentrada FROM char_length('00' || minuentrada)-2+1) AS " " HoraEntrada " ", "
+    querydata = querydata & "horadescanso || substring('00' || minudescanso FROM char_length('00' || minudescanso)-2+1) AS SDescanso, " 
+    querydata = querydata & "horareincor || substring('00' || minureincor FROM char_length('00' || minureincor)-2+1) AS EDescanso, "
+    querydata = querydata & "horasalida  || substring('00' || minusalida FROM char_length('00' || minusalida)-2+1) AS HoraSalida, "
+    querydata = querydata & "(select tipnom  from " & ntablaorigen & "  where ficha = dbo_asist_registro.cod_ficha limit 1) AS TipNom "
+    querydata = querydata & "FROM sysasis_registro AS dbo_asist_registro " 
+    If Comp(Trim(fechainicial), "", gb.IgnoreCase) == 0 Then
+        querydata = querydata & "WHERE fec_registro = to_date( '" & fechagenerar & "', 'YYYYMMDD')"
+    Else
+        querydata = querydata & "WHERE fec_registro <= to_date( '" & fechagenerar & "', 'YYYYMMDD')"
+        querydata = querydata & " AND fec_registro >= to_date( '" & fechainicial & "', 'YYYYMMDD')"
+    Endif
+    querydump = querydata & ") TO '" & ruta & namefiler & fechagenerar & ".csv '  WITH CSV HEADER DELIMITER ';' force quote *"
+    objectps = dbmanagdat.getConectionPg()
+    If objectps <> Null Then
+        If objectps.Opened == False Then
+            Print "Notificacion - Generando Archivo " & ruta & namefiler & fechagenerar & ".csv'"
+            Try objectps.Exec(querydump)
+            If Error Then 
+                Print "Error - al ejecutar Proceso de Extracción : \"" & Error.Code & " " & Error.Text
+                Return False
+            Else
+                Print "Advertencia - Archivo CSV generado exitosamente. Revise " & ruta & " en el servidor de centralizacion."
+                Return True
+            End If
+        Endif
+    Else
+        Print "Error - conexcion no presente o invalida, operacion fallida de generar CSV " & querydump
+        Return False
+    End If
+
+End
+
+
+
+'' Recibe una cadena de texto que simula una fecha en formato
+'' yyyy-mm-dd hh:mm:ss.mmm y la transforma en una variable tipo Date
+'' (fecha) con formato mm/dd/yyyy  hh:mm:ss.mmm <br>
+'' asi se guarda en la base de datos sqlite 2013-09-26 07:00:00.000 si no se altera la configuracion debian
+'' asi se guarda en la base de datos postgresql 09/26/2013 07:00:00.000 si no se altera la configuracion debian
+'' <br>
+'' @AUTHOR "FENIX" Tyrone Lucero <tyrone.lucero@gmail.com>
+Public Function get_date(ByRef strdate As String) As Date
+    Dim y, m, d, h, mi, s, ms As String
+    Dim doyfecha As String
+    Dim dat As Date
+    y = Mid(strdate, 1, 4)
+    m = Mid(strdate, 6, 2)
+    d = Mid(strdate, 9, 2)
+    h = Mid(strdate, 12, 2)
+    mi = Mid(strdate, 15, 2)
+    s = Mid(strdate, 18, 2)
+    ms = Mid(strdate, 20, 4)
+    doyfecha = m & "/" & d & "/" & y & " " & h & ":" & mi & ":" & s & ms
+    dat = Date(doyfecha)
+    Return dat
+End
+
+'' celdalimpia remueve la comillas simples/dobles de una variable texto delimitada
+Private Sub celdalimpia(celda As String, Optional delimitador As String = "\"") As String
+    If Left$(celda) == "\'" And Right$(celda) == "\'" Then
+        celda = Mid$(celda, 2, -1)      ' inicialmente asumido comilla simple como delimitador
+    Endif
+    If Left$(celda) == delimitador And Right$(celda) == delimitador Then
+        celda = Mid$(celda, 2, -1)      ' analizo si la celda contiene comillas dobles
+    Endif
+    Return celda
+End
+
+'' proceso de sincronizado off-line para cuadno no hay internet
+'' este proceso, inicia la tabla de lista de trabajadores/usuarios, y la pobla desde un archivo CSV o desde un regiastro por defecto
+'' este proceso obtiene la lista de empleados/usuarios a autenticar, completa (fuerza bruta)
+'' retrae el fichero compreso/encriptado, detecta nombres de campos e inserta los registros
+'' una vez realizado esto borra el fichero desencriptado, los archivos son movidos por fecha
+'' la fecha es el numero, no importando la de la maquina, la ultima fecha sera siempre el numero mayor
+Public Sub syncronizar(arcm As Boolean, Optional lugar As String = "tienda", Optional nf As String = "consolidado_especial_export_", sincronizar As Boolean = True) As Integer
+    
+    Dim hTable As Table         ' tabla de la nomina listado desde esas lineas de procesamiento
+    objectps = dbmanagdat.getConectionPg()
+    If objectps.Opened == False Then
+        objectps = dbmanagdat.conectarPg(datos.getHostOP(), datos.getUserDb(), datos.getClavDb(), datos.getNameDb(), datos.getTypeDBop())
+    Endif
+    
+    If Not objectps.Tables.Exist("consolidado_especial") Then
+        hTable = objectps.Tables.Add("consolidado_especial")
+        With hTable.Fields
+            .Add("TIPNOM", db.String, 60, "999") ' TIPONOM VARCHAR(60) Default Null, - - PK: nunca hay dos trabajadores en la misma nomina
+            .Add("CODSUC", db.String, 60, "999") ' CODSUC VARCHAR(60) Default Null, - - brinda info del lugar de trabajo
+            .Add("CODGER", db.String, 60, "999") ' CODGER VARCHAR(60) Default Null, - - brinda info del lugar donde debe trabajar
+            .Add("FICHA", db.String, 60, "99999999") ' FICHA VARCHAR(10)Null Default Null, - - identificador o licencia conducir, cedula sin letra de nacionalidad en caso Venezuela
+            .Add("NOMBRES", db.String, 60, Null) ' NOMBRES VARCHAR(60)Null Default Null, - - nombre, ambos separados por un espacio
+            .Add("APELLIDOS", db.String, 60, Null) ' APELLIDOS VARCHAR(60)Null Default Null, - - apellido, ambos separados por un espacio
+            .Add("ESTADO", db.String, 60, Null) ' ESTADO VARCHAR(60)Null Default Null, - - activo, inactivo, suspendido, vacaciones, usado para verificacion y auditoria
+            .Add("Cedula", db.String, 60, "99999999") ' Cedu VARCHAR(12)Null Default Null, - - numero de la cedula necesario sin ceros a la izquierda
+            .Add("fingreso", db.String, 60, Null) ' fingreso VARCHAR(60) Defaul Null - - fecha de ingreso a su respectivo codger, para saber su ultima ubicacion
+            .Add("fec_actualizacion", db.String, 60, Now) ' fec_actualizacion Date Not Null, - - fecha en que se altero los datos de esta tabla por ultima vez
+            .Add("cod_usuario", db.String, 60, "systemas") ' cod_usuario VARCHAR(20)Null Default 'systemas' , -- codigo/usuario que altero los datos por ultima vez
+        End With
+        hTable.PrimaryKey = ["TIPNOM", "CODSUC", "CODGER", "FICHA", "Cedula"] ' cedula no es pk, debe ser cedu
+        hTable.Update
+    Endif
+    
+    dbmanagdat.sysasis_init_lugar
+    dbmanagdat.sysasis_init_registro
+    
+    Return 0
+    
+End
+
