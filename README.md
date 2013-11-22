@@ -1,7 +1,7 @@
 Simple Control de Asistencia
 ============================
 
-Web page: http://mckaygerhard.github.io/simplecontrolasistencia
+New Web PAge: https://gitlab.com/mckaygerhard/simplecontrolasistencia/wikis/home
 
 Introduccion y descripcion
 --------------------------
@@ -29,7 +29,7 @@ En la wiki, tambien resumido en este archivo:
 
 Main laguaje are spanish/Lenguaje principal es español.
 
-* https://github.com/mckaygerhard/simplecontrolasistencia/wiki
+* https://gitlab.com/mckaygerhard/simplecontrolasistencia/wikis/home
 
 LEER COMPLETO EL ENLACE ANTES DE SEGUIR.
 
@@ -39,7 +39,7 @@ Requeriments, instrucciones:
 
 Estan en la wiki, tambien un resumen al final de este archivo:
 
-* https://github.com/mckaygerhard/simplecontrolasistencia/wiki/Requerimientos-Requeriments
+* https://gitlab.com/mckaygerhard/simplecontrolasistencia/wikis/Requerimientos-Requeriments
 
 
 Caracteristicas
