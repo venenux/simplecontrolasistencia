@@ -1,0 +1,223 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<title>Consolidado Especial</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<style>
+body { font:80% Verdana,Tahoma,Arial,sans-serif; }
+h1, h2, h3, h4 {  font-family: "Trebuchet MS",Georgia,"Times New Roman",serif; }
+ul.toc { padding: 4px; margin-left: 0; }
+ul.toc li { list-style-type:none; }
+ul.toc li.heading2 { margin-left: 1em; }
+ul.toc li.heading3 { margin-left: 2em; }
+a.wiki-anchor { display: none; margin-left: 6px; text-decoration: none; }
+a.wiki-anchor:hover { color: #aaa !important; text-decoration: none; }
+h1:hover a.wiki-anchor, h2:hover a.wiki-anchor, h3:hover a.wiki-anchor { display: inline; color: #ddd; }
+</style>
+</head>
+<body>
+<ul class="toc"><li><a href="#Consolidado_Especial">Consolidado_Especial</a><ul><li><a href="#Seguridad">Seguridad</a></li><li><a href="#Requerimeinto-de-generacion-CSV">Requerimeinto de generacion: CSV</a></li><li><a href="#Formato-de-el-archivo-CSV-generado">Formato de el archivo CSV generado</a></li><li><a href="#Campos-de-datos-necesarios">Campos de datos necesarios</a><ul><li><ul><li><a href="#Todos-los-campos-aqui-son-requeridos">Todos los campos aqui son requeridos:</a></li><li><a href="#campos-opcionales-no-necesarios">campos opcionales no necesarios:</a></li></ul>
+</li></ul>
+</li><li><a href="#Estructura-sql-de-nomina-consolidado-especial">Estructura sql de nomina consolidado especial</a><ul><li><a href="#tabla">tabla</a></li></ul>
+</li><li><a href="#Importacion-manual-de-CSV-a-Base-de-datos">Importacion manual de CSV a Base de datos</a><ul><li><ul><li><a href="#Modificacion-del-Contenido">Modificacion del Contenido</a></li><li><a href="#Ejecucion-de-dicho-contenido">Ejecucion de dicho contenido</a></li></ul></li></ul></li></ul></li></ul>
+
+
+	<a name="Consolidado_Especial"></a>
+<h1 >Consolidado_Especial<a href="#Consolidado_Especial" class="wiki-anchor">&para;</a></h1>
+
+
+	<p>Datos necesarios para llenado inicial de la <a href="Estructura_de_Datos.html" class="wiki-page">Estructura_de_Datos</a> del sistema de asistencia y parte del futuro sistema de nomina independiente. <ins>Puede ser usado como actualizado diario</ins>.</p>
+
+
+	<p><strong>Archivo separado por comas</strong>, la estructura es producto de la importacion de sistemas externos, esta enfocado en las extructuras de <em><strong>saint</strong></em> y <em><strong>a2</strong></em> principalmente.</p>
+
+
+	<a name="Seguridad"></a>
+<h2 >Seguridad<a href="#Seguridad" class="wiki-anchor">&para;</a></h2>
+
+
+	<p>No es inherencia de el sistema esto, ya que no hay soporte para sistemas no linux. El archivo debe viajar por https, o ftp. El archivo puede viajar plano si va por VPN, ya que los sistemas desde donde se genera no tiene automatismos para encriptar en <strong>lrzip</strong> o formatos avanzados seguros.<br />Opcion es emplear 7z (<a class="external" href="http://www.7zip.com">www.7zip.com</a>) con algoritmo propio entre las partes y enviado/ofrecido por protocolo https o sobre VPN seguro, ya que dicho software esta para todas las plataformas.</p>
+
+
+	<a name="Requerimeinto-de-generacion-CSV"></a>
+<h2 >Requerimeinto de generacion: CSV<a href="#Requerimeinto-de-generacion-CSV" class="wiki-anchor">&para;</a></h2>
+
+
+	<ul>
+	<li>Debe ser <ins>fabricado antes de la media noche</ins>, <strong><ins>el servicio de asistencia lee el archivo dos (2) minutos antes de la medianoche</ins></strong> para generar las bases de datos remotas con dichos cambios al dia siguiente.</li>
+	</ul>
+
+
+	<ul>
+	<li>El archivo debe tener <ins>por nombre "ConsolidadoEspecialYYYYMMDD1.csv"</ins> siendo las siglas la fecha <ins>en minusculas</ins> sin excepciones.</li>
+	</ul>
+
+
+	<a name="Formato-de-el-archivo-CSV-generado"></a>
+<h2 >Formato de el archivo CSV generado<a href="#Formato-de-el-archivo-CSV-generado" class="wiki-anchor">&para;</a></h2>
+
+
+	<ul>
+	<li><strong>nombre</strong> : se llamara "ConsolidadoEspecialYYYYMMDD1.csv" siendo las siglas la fecha</li>
+		<li><strong>cabeceras</strong>: <ins>primera linea</ins> debe traer <strong>nombres de los campos aqui</strong> especificados IMPRESCINDIBLE</li>
+		<li><strong>codificacion</strong>: UTF8 para que tome letras de otros alfabetos, especialmente latin</li>
+		<li><strong>separador</strong>: punto y coma ( ; )</li>
+		<li><strong>delimitador</strong>: comillas dobles ( " )</li>
+		<li><strong>columnas</strong>: nueva linea (LF de Unix)</li>
+		<li><strong>escapado</strong>: barra inversa "\" caracter de escape</li>
+	</ul>
+
+
+	<p><strong>IMPORTANTE</strong>: <ins>si el archivo no es UTF8 no se leera!</ins></p>
+
+
+	<a name="Campos-de-datos-necesarios"></a>
+<h2 >Campos de datos necesarios<a href="#Campos-de-datos-necesarios" class="wiki-anchor">&para;</a></h2>
+
+
+	<p><strong>Orden listado es preferible, aunque no imprescindible</strong> El programa detectara el orden, pero sugerimos el mismo orden de la creacion aqui.</p>
+
+
+	<a name="Todos-los-campos-aqui-son-requeridos"></a>
+<h4 >Todos los campos aqui son requeridos:<a href="#Todos-los-campos-aqui-son-requeridos" class="wiki-anchor">&para;</a></h4>
+
+
+	<ul>
+	<li><strong>tipnom</strong>: Codigo tipo de nomina</li>
+		<li><strong>codsuc</strong>: Codigo de sucursal/grupo regional</li>
+		<li><strong>codger</strong>: Codigo Lugar/Ubicacion de trabajo</li>
+		<li><strong>ubicacion</strong>: necesario para descripcion de codger</li>
+		<li><strong>codvp</strong>: codigo del departamento asociado</li>
+		<li><strong>departamento</strong>: necesario descripcion codvp</li>
+		<li><strong>coddir</strong>: Codigo de gerencia a la que trabaja en la organizacion</li>
+		<li><strong>gerencia</strong>:  necesario para descripcjon de coddir</li>
+		<li><strong>coddep</strong>: codigo de la modalidad para con la empresa de forma de laborar</li>
+		<li><strong>modalidad</strong>: descriptivo de coddep</li>
+		<li><strong>codcar</strong>: codigo del cargo que ostenta</li>
+		<li><strong>cargo</strong>: descriptivo o nombre del cargo</li>
+		<li><strong>codsuc</strong> : codigo interno del responsable social o empresa</li>
+		<li><strong>compania</strong>: nombre o descriptivo de codsuc, nombre empresa en que labora</li>
+		<li><strong>codgrup</strong>: codigo del area o region en el pais que labora</li>
+		<li><strong>grupo</strong>: descriptivo de codgrup, nombre de la region donde trabaja</li>
+		<li><strong>ficha</strong>: ficha o id unico del trabajador</li>
+		<li><strong>cedula</strong>: Cedula, id o identificacion en el pais del individuo, incluyendo V- o E-</li>
+		<li><strong>estado</strong>: estado en que se encuenta en la nomina</li>
+		<li><strong>nombres</strong>: nombres, ambos,  completos</li>
+		<li><strong>apellidos</strong>: apellidos, ambos,  completos</li>
+		<li><strong>nomina</strong>: necesario para descripcion de tipnom</li>
+		<li><strong>fnacimiento</strong>: fecha de nacimiento, formato YYYYMMDD</li>
+		<li><strong>fingreso</strong>: fecha de ingreso, formato YYYYMMDD</li>
+		<li><strong>tjornada</strong>: incluye jornada semanal, tipo tyrabajador, nomina.</li>
+	</ul>
+
+
+	<a name="campos-opcionales-no-necesarios"></a>
+<h4 >campos opcionales no necesarios:<a href="#campos-opcionales-no-necesarios" class="wiki-anchor">&para;</a></h4>
+
+
+	<ul>
+	<li><strong>sexo</strong>: sexo (Masculino/Femenido/Indefinido)</li>
+		<li><strong>apenomc</strong>: primer nombre y primer apellido solamente</li>
+		<li><strong>NCuenta</strong>: numero cuenta nomina donde se le deposita</li>
+		<li><strong>FinContrato</strong>: fecha fin del contrato del trabjador</li>
+		<li><strong>FRetiro</strong>: fecha de retiro del trabajador</li>
+		<li><strong>direccion</strong>: direccion del trabajador <ins><strong>NECESARIO SUI ES DE CASA</strong></ins></li>
+	</ul>
+
+
+	<a name="Estructura-sql-de-nomina-consolidado-especial"></a>
+<h2 >Estructura sql de nomina consolidado especial<a href="#Estructura-sql-de-nomina-consolidado-especial" class="wiki-anchor">&para;</a></h2>
+
+
+	<p>Esta es una estructura ejemplo provista por el departamento de sistemas no se asegura la informacion es completa ya que no se tiene acceso a ninguna base de datos:</p>
+
+
+	<a name="tabla"></a>
+<h3 >tabla<a href="#tabla" class="wiki-anchor">&para;</a></h3>
+
+
+	<p>Cabe destacar que esta informacion esta incompleta</p>
+
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers"> 1</span><span class="class">CREATE</span> <span class="type">TABLE</span> dbo.consolidado_especial
+<span class="line-numbers"> 2</span>(
+<span class="line-numbers"> 3</span>    FICHA         <span class="predefined-type">VARCHAR</span>(<span class="integer">15</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 4</span>    Cedula         <span class="predefined-type">VARCHAR</span>(<span class="integer">15</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 5</span>    ApeNom         <span class="predefined-type">VARCHAR</span>(<span class="integer">50</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 6</span>    ApeNomC     <span class="predefined-type">VARCHAR</span>(<span class="integer">50</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 7</span>    Nombres      <span class="predefined-type">VARCHAR</span>(<span class="integer">30</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 8</span>    Apellidos             <span class="predefined-type">VARCHAR</span>(<span class="integer">30</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 9</span>    Compa<span class="error">ñ</span>ia     <span class="predefined-type">VARCHAR</span>(<span class="integer">60</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"><strong>10</strong></span>    Departamento <span class="predefined-type">VARCHAR</span>(<span class="integer">50</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">11</span>    Ubicacion     <span class="predefined-type">VARCHAR</span>(<span class="integer">50</span>) <span class="predefined-constant">NULL</span>, <span class="comment">-- antiguamete &quot;unidad&quot; </span>
+<span class="line-numbers">12</span>    FNacimiento     <span class="predefined-type">DATE</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">13</span>    SEXO         <span class="predefined-type">VARCHAR</span>(<span class="integer">15</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">14</span>    Modalidad     <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">15</span>    CodCar         <span class="predefined-type">VARCHAR</span>(<span class="integer">6</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">16</span>    Cargo         <span class="predefined-type">VARCHAR</span>(<span class="integer">50</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">17</span>    Sueldo         <span class="predefined-type">DECIMAL</span>(<span class="integer">10</span>,<span class="integer">2</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">18</span>    Estado         <span class="predefined-type">VARCHAR</span>(<span class="integer">30</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">19</span>    Vacaciones     <span class="predefined-type">VARCHAR</span>(<span class="integer">50</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"><strong>20</strong></span>    Suspendido     <span class="predefined-type">VARCHAR</span>(<span class="integer">50</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">21</span>    FIngreso            <span class="predefined-type">DATE</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">22</span>    FRetiro        <span class="predefined-type">DATE</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">23</span>    FinContrato     DATENULL,
+<span class="line-numbers">24</span>    TJornada           <span class="predefined-type">VARCHAR</span>(<span class="integer">30</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">25</span>    FCobro         <span class="predefined-type">VARCHAR</span>(<span class="integer">30</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">26</span>    NCuenta             <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">27</span>    Turno         <span class="predefined-type">VARCHAR</span>(<span class="integer">30</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">28</span>    Nomina         <span class="predefined-type">VARCHAR</span>(<span class="integer">60</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">29</span>    Grupo         <span class="predefined-type">VARCHAR</span>(<span class="integer">60</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"><strong>30</strong></span>    TipNom         <span class="predefined-type">VARCHAR</span>(<span class="integer">6</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">31</span>    CodVP         <span class="predefined-type">VARCHAR</span>(<span class="integer">6</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">32</span>    CodGer         <span class="predefined-type">VARCHAR</span>(<span class="integer">6</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">33</span>    CodDep         <span class="predefined-type">VARCHAR</span>(<span class="integer">6</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">34</span>    CodDir         <span class="predefined-type">VARCHAR</span>(<span class="integer">6</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">35</span>    CodSuc         <span class="predefined-type">VARCHAR</span>(<span class="integer">6</span>) <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">36</span>    <span class="directive">PRIMARY</span> <span class="type">KEY</span> (FICHA)
+<span class="line-numbers">37</span>)
+</span></code><br /></pre>
+
+	<a name="Importacion-manual-de-CSV-a-Base-de-datos"></a>
+<h2 >Importacion manual de CSV a Base de datos<a href="#Importacion-manual-de-CSV-a-Base-de-datos" class="wiki-anchor">&para;</a></h2>
+
+
+	<ol>
+	<li>la primera linea comienza con la sentencia "COPY" seguid de la tabla y los campos</li>
+		<li>el orden de los campo debe ser igual al orden de las columnas del archivo CSV</li>
+		<li>al final de la primera linea debe colocarse "FROM STDIN;" </li>
+		<li>las lineas subsiguientes son el contenido del CSV (si se usa la linea de comandos directa es redireccion desde CSV)</li>
+		<li>al final del archivo se debe colocar en nueva linea "\."</li>
+	</ol>
+
+
+	<a name="Modificacion-del-Contenido"></a>
+<h4 >Modificacion del Contenido<a href="#Modificacion-del-Contenido" class="wiki-anchor">&para;</a></h4>
+
+
+	<p>Recordar guardarlo como extension ".sql" ejemplo ConsolidadoEspecial20131115.sql:</p>
+
+
+<pre><code class="bash syntaxhl"><span class="CodeRay"><span class="line-numbers"> 1</span>COPY public.consolidado_especial(ficha,campo2,status,fe_registro) FROM STDIN;
+<span class="line-numbers"> 2</span>00000    CHN    1    2011-03-30 11:15:36.180000000
+<span class="line-numbers"> 3</span>0000C    CHN    1    2011-06-20 15:13:00.843000000
+<span class="line-numbers"> 4</span>0000H    CHN    1    2011-06-20 15:13:00.843000000
+<span class="line-numbers"> 5</span>00039    CHN    1    2011-06-20 15:13:00.843000000
+<span class="line-numbers"> 6</span>000GB    CHN    1    2011-03-30 11:15:36.180000000
+<span class="line-numbers"> 7</span>-- ... truncado, esto es solo un ejemplo
+<span class="line-numbers"> 8</span>YU0002    CHN    11    2011-07-20 16:05:54.007000000
+<span class="line-numbers"> 9</span>\.
+</span></code></pre>
+
+	<a name="Ejecucion-de-dicho-contenido"></a>
+<h4 >Ejecucion de dicho contenido<a href="#Ejecucion-de-dicho-contenido" class="wiki-anchor">&para;</a></h4>
+
+
+	<p>Para postgresql, usamos localhost como nombre de la maquina (o ip puede ser), es asi:</p>
+
+
+<pre><code class="bash syntaxhl"><span class="CodeRay"><span class="line-numbers">1</span>psql -h localhost -U systemas -W -d sysasistencia  -f ConsolidadoEspecial20131115.sql
+</span></code></pre>
+</body>
+</html>

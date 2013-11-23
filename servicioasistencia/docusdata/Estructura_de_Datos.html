@@ -1,0 +1,261 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<title>Estructura de Datos</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<style>
+body { font:80% Verdana,Tahoma,Arial,sans-serif; }
+h1, h2, h3, h4 {  font-family: "Trebuchet MS",Georgia,"Times New Roman",serif; }
+ul.toc { padding: 4px; margin-left: 0; }
+ul.toc li { list-style-type:none; }
+ul.toc li.heading2 { margin-left: 1em; }
+ul.toc li.heading3 { margin-left: 2em; }
+a.wiki-anchor { display: none; margin-left: 6px; text-decoration: none; }
+a.wiki-anchor:hover { color: #aaa !important; text-decoration: none; }
+h1:hover a.wiki-anchor, h2:hover a.wiki-anchor, h3:hover a.wiki-anchor { display: inline; color: #ddd; }
+</style>
+</head>
+<body>
+<ul class="toc"><li><a href="#Estructura-de-Datos">Estructura de Datos</a><ul><li><a href="#Esquemas">Esquemas</a></li></ul>
+</li><li><a href="#Tablas-del-Sistema">Tablas del Sistema:</a><ul><li><a href="#Nomina-Perteneciente">Nomina Perteneciente</a></li><li><a href="#Lugar-de-Trabajo">Lugar de Trabajo</a></li><li><a href="#Area-region-o-Grupo-Regional">Area region o Grupo Regional</a></li><li><a href="#Modo-de-trabajo-o-cercania-a-la-organizacion">Modo de trabajo o cercania a la organizacion</a></li><li><a href="#Cargo-del-trabajador">Cargo del trabajador</a></li><li><a href="#Responsable-Social">Responsable Social</a></li><li><a href="#Tabla-de-usuarios-o-trabajadores">Tabla de usuarios o trabajadores</a><ul><li><ul><li><a href="#Salida-de-creacion-del-proceso">Salida de creacion del proceso:</a></li></ul></li></ul></li></ul></li></ul>
+
+
+	<a name="Estructura-de-Datos"></a>
+<h1 >Estructura de Datos<a href="#Estructura-de-Datos" class="wiki-anchor">&para;</a></h1>
+
+
+	<p>LA estructura de datos de el sistema de asistencias tiene dos tipos de tablas, las tablas de datos foraneos (Lugares, Gerencias, Cargos, etc) y las tablas de sistemas (usuarios o trabajadores, perfiles, reportes y registros).</p>
+
+
+	<p>De estas solo las de sistemas se dividen en esquemas históricos anuales, para optimizar la cantidad de registros guardados de manera distribuida.</p>
+
+
+	<a name="Esquemas"></a>
+<h2 >Esquemas<a href="#Esquemas" class="wiki-anchor">&para;</a></h2>
+
+
+	<ul>
+	<li>public : en este esquema están todas las tablas y procedimientos almacenados del sistema.</li>
+		<li>sysasisXXXX : en este esquema están la tabla de registros, las siglas XXXX corresponden al año.</li>
+	</ul>
+
+
+	<a name="Tablas-del-Sistema"></a>
+<h1 >Tablas del Sistema:<a href="#Tablas-del-Sistema" class="wiki-anchor">&para;</a></h1>
+
+
+	<p>De las tablas de la estructura del sistema, las mas importantes son la del lugar y la del usuario/trabajador, ya que en base a estas dos entidades se trabaja el sistema, la del lugar tiene las ip y codigos de cada punto de sistema, y la de usuarios tiene que papel desempeña y las caracteristicas del mismo.</p>
+
+
+	<a name="Nomina-Perteneciente"></a>
+<h2 >Nomina Perteneciente<a href="#Nomina-Perteneciente" class="wiki-anchor">&para;</a></h2>
+
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers"> 1</span><span class="class">DROP</span> <span class="type">TABLE</span> <span class="keyword">IF</span> <span class="keyword">EXISTS</span> sysasis_nomina;
+<span class="line-numbers"> 2</span><span class="class">CREATE</span> <span class="type">TABLE</span> sysasis_nomina (
+<span class="line-numbers"> 3</span>  cod_nomina           <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 4</span>  tipnom               <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>),
+<span class="line-numbers"> 5</span>  des_nomina           <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>),
+<span class="line-numbers"> 6</span>  fec_actualizacion    <span class="predefined-type">DATE</span> <span class="directive">DEFAULT</span> <span class="predefined">now</span>(),
+<span class="line-numbers"> 7</span>  cod_usuasys          <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="directive">DEFAULT</span> <span class="string"><span class="delimiter">'</span><span class="content">systemas</span><span class="delimiter">'</span></span>,
+<span class="line-numbers"> 8</span>  <span class="directive">PRIMARY</span> <span class="type">KEY</span> (cod_nomina ));
+<span class="line-numbers"> 9</span>);
+</span></code><br /></pre>
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers">1</span><span class="class">INSERT</span> <span class="class">INTO</span> sysasis_nomina( cod_nomina, tipnom, des_nomina) 
+<span class="line-numbers">2</span><span class="class">SELECT</span> (<span class="predefined">substring</span>(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || tipnom <span class="keyword">FROM</span> char_length(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || tipnom)<span class="integer">-3</span><span class="integer">+1</span>)) <span class="keyword">AS</span> cod_nomina, tipnom, nomina <span class="keyword">FROM</span> consolidadoespecial <span class="keyword">GROUP</span> <span class="keyword">BY</span> tipnom, nomina <span class="keyword">ORDER</span> <span class="keyword">BY</span> cod_nomina;
+</span></code><br /></pre>
+
+	<a name="Lugar-de-Trabajo"></a>
+<h2 >Lugar de Trabajo<a href="#Lugar-de-Trabajo" class="wiki-anchor">&para;</a></h2>
+
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers"> 1</span><span class="class">DROP</span> <span class="type">TABLE</span> <span class="keyword">IF</span> <span class="keyword">EXISTS</span> sysasis_lugar;
+<span class="line-numbers"> 2</span><span class="class">CREATE</span> <span class="type">TABLE</span> sysasis_lugar(
+<span class="line-numbers"> 3</span>  cod_lugar          <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 4</span>  cod_ip             <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>),
+<span class="line-numbers"> 5</span>  codger             <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>),
+<span class="line-numbers"> 6</span>  des_lugar          <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>),
+<span class="line-numbers"> 7</span>  fec_actualizacion  <span class="predefined-type">DATE</span> <span class="directive">DEFAULT</span> <span class="predefined">now</span>(),
+<span class="line-numbers"> 8</span>  cod_usuasys        <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>),
+<span class="line-numbers"> 9</span>  <span class="directive">PRIMARY</span> <span class="type">KEY</span> (cod_lugar)
+<span class="line-numbers"><strong>10</strong></span>);
+</span></code><br /></pre>
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers">1</span><span class="class">INSERT</span> <span class="class">INTO</span> sysasis_lugar( cod_lugar,codger,des_lugar) 
+<span class="line-numbers">2</span><span class="class">SELECT</span> (<span class="predefined">substring</span>(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || codger <span class="keyword">FROM</span> char_length(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || codger)<span class="integer">-3</span><span class="integer">+1</span>)) <span class="keyword">AS</span> cod_lugar, codger, ubicacion <span class="keyword">FROM</span> consolidadoespecial <span class="keyword">GROUP</span> <span class="keyword">BY</span> codger, ubicacion <span class="keyword">ORDER</span> <span class="keyword">BY</span> cod_lugar;
+</span></code><br /></pre>
+
+	<a name="Area-region-o-Grupo-Regional"></a>
+<h2 >Area region o Grupo Regional<a href="#Area-region-o-Grupo-Regional" class="wiki-anchor">&para;</a></h2>
+
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers"> 1</span><span class="class">DROP</span> <span class="type">TABLE</span> <span class="keyword">IF</span> <span class="keyword">EXISTS</span> sysasis_grupo;
+<span class="line-numbers"> 2</span><span class="class">CREATE</span> <span class="type">TABLE</span> sysasis_grupo (
+<span class="line-numbers"> 3</span>    cod_grupo         <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 4</span>    coddir            <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>),
+<span class="line-numbers"> 5</span>    des_grupo         <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>),
+<span class="line-numbers"> 6</span>    fec_actualizacion <span class="predefined-type">DATE</span> <span class="directive">DEFAULT</span> <span class="predefined">now</span>(),
+<span class="line-numbers"> 7</span>    cod_usuasys       <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="directive">DEFAULT</span> <span class="string"><span class="delimiter">'</span><span class="content">systemas</span><span class="delimiter">'</span></span>,
+<span class="line-numbers"> 8</span>    <span class="directive">PRIMARY</span> <span class="type">KEY</span> (cod_grupo)
+<span class="line-numbers"> 9</span>);
+</span></code><br /></pre>
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers">1</span><span class="class">INSERT</span> <span class="class">INTO</span> sysasis_grupo( cod_grupo,coddir,des_grupo) 
+<span class="line-numbers">2</span><span class="class">SELECT</span> (<span class="predefined">substring</span>(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || coddir <span class="keyword">FROM</span> char_length(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || coddir)<span class="integer">-3</span><span class="integer">+1</span>)), coddir, gerencia <span class="keyword">FROM</span> consolidadoespecial <span class="keyword">WHERE</span> trim(coddir) &lt;&gt; <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span> <span class="keyword">AND</span> gerencia &lt;&gt; <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span> <span class="keyword">GROUP</span> <span class="keyword">BY</span> coddir, gerencia <span class="keyword">ORDER</span> <span class="keyword">BY</span> coddir;
+</span></code><br /></pre>
+
+	<a name="Modo-de-trabajo-o-cercania-a-la-organizacion"></a>
+<h2 >Modo de trabajo o cercania a la organizacion<a href="#Modo-de-trabajo-o-cercania-a-la-organizacion" class="wiki-anchor">&para;</a></h2>
+
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers">1</span><span class="class">CREATE</span> <span class="type">TABLE</span> sysasis_modotrabajo (
+<span class="line-numbers">2</span>  cod_modotrabajo character varying(<span class="integer">20</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">3</span>  coddep character varying(<span class="integer">20</span>),
+<span class="line-numbers">4</span>  des_modotrabajo character varying(<span class="integer">80</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers">5</span>  fec_actualizacion <span class="predefined-type">date</span> <span class="directive">DEFAULT</span> <span class="predefined">now</span>(),
+<span class="line-numbers">6</span>  cod_usuasys character varying(<span class="integer">20</span>) <span class="directive">DEFAULT</span> <span class="string"><span class="delimiter">'</span><span class="content">systemas</span><span class="delimiter">'</span></span>::character varying,
+<span class="line-numbers">7</span>  <span class="type">CONSTRAINT</span> sysasis_modotrabajo_pkey <span class="directive">PRIMARY</span> <span class="type">KEY</span> (cod_modotrabajo ) )
+</span></code><br /></pre>
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers">1</span><span class="class">insert</span> <span class="class">into</span> sysasis_modotrabajo( cod_modotrabajo,coddep,des_modotrabajo) 
+<span class="line-numbers">2</span><span class="class">select</span> (<span class="predefined">substring</span>(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || coddep <span class="keyword">FROM</span> char_length(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || coddep)<span class="integer">-3</span><span class="integer">+1</span>)), 
+<span class="line-numbers">3</span>coddep, modalidad <span class="keyword">from</span> consolidadoespecial  
+<span class="line-numbers">4</span><span class="keyword">where</span> trim(coddep) &lt;&gt; <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span> <span class="keyword">group</span> <span class="keyword">by</span> coddep, modalidad <span class="keyword">order</span> <span class="keyword">by</span> coddep
+</span></code><br /></pre>
+
+	<a name="Cargo-del-trabajador"></a>
+<h2 >Cargo del trabajador<a href="#Cargo-del-trabajador" class="wiki-anchor">&para;</a></h2>
+
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers"> 1</span><span class="class">CREATE</span> <span class="type">TABLE</span> sysasis_cargo
+<span class="line-numbers"> 2</span>(
+<span class="line-numbers"> 3</span>  cod_cargo <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 4</span>  codcar       <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>),
+<span class="line-numbers"> 5</span>  des_cargo <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 6</span>  fec_actualizacion <span class="predefined-type">DATE</span> <span class="directive">DEFAULT</span> <span class="predefined">now</span>(),
+<span class="line-numbers"> 7</span>  cod_usuasys <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="directive">DEFAULT</span> <span class="string"><span class="delimiter">'</span><span class="content">systemas</span><span class="delimiter">'</span></span>:,
+<span class="line-numbers"> 8</span>  <span class="directive">PRIMARY</span> <span class="type">KEY</span> (cod_cargo )
+<span class="line-numbers"> 9</span>)
+</span></code><br /></pre>
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers">1</span><span class="class">INSERT</span> <span class="class">INTO</span> sysasis_cargo( cod_cargo,codcar,des_cargo) 
+<span class="line-numbers">2</span><span class="class">SELECT</span> (<span class="predefined">substring</span>(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || codcar <span class="keyword">FROM</span> char_length(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || codcar)<span class="integer">-3</span><span class="integer">+1</span>)),codcar ,cargo  <span class="keyword">FROM</span> consolidadoespecial <span class="keyword">WHERE</span> trim(codcar) &lt;&gt; <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span> <span class="keyword">GROUP</span> <span class="keyword">BY</span> codcar, cargo <span class="keyword">ORDER</span> <span class="keyword">BY</span> codcar
+</span></code><br /></pre>
+
+	<a name="Responsable-Social"></a>
+<h2 >Responsable Social<a href="#Responsable-Social" class="wiki-anchor">&para;</a></h2>
+
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers"> 1</span><span class="class">CREATE</span> <span class="type">TABLE</span> sysasis_responsable
+<span class="line-numbers"> 2</span>(
+<span class="line-numbers"> 3</span>  cod_responsable <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 4</span>  codsuc                 <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>),
+<span class="line-numbers"> 5</span>  des_responsable <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>,
+<span class="line-numbers"> 6</span>  fec_actualizacion <span class="predefined-type">DATE</span> <span class="directive">DEFAULT</span> <span class="predefined">now</span>(),
+<span class="line-numbers"> 7</span>  cod_usuasys       <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="directive">DEFAULT</span> <span class="string"><span class="delimiter">'</span><span class="content">systemas</span><span class="delimiter">'</span></span>,
+<span class="line-numbers"> 8</span>  <span class="directive">PRIMARY</span> <span class="type">KEY</span> (cod_responsable )
+<span class="line-numbers"> 9</span>);
+</span></code><br /></pre>
+
+<pre>
+<code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers">1</span><span class="class">INSERT</span> <span class="class">INTO</span> sysasis_responsable( cod_responsable,codsuc,des_responsable) 
+<span class="line-numbers">2</span><span class="class">SELECT</span> (<span class="predefined">substring</span>(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || codsuc <span class="keyword">FROM</span> char_length(<span class="string"><span class="delimiter">'</span><span class="content">000</span><span class="delimiter">'</span></span> || codsuc)<span class="integer">-3</span><span class="integer">+1</span>)),codsuc,compania <span class="keyword">FROM</span> consolidadoespecial <span class="keyword">WHERE</span> trim(codsuc) &lt;&gt; <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span> <span class="keyword">GROUP</span> <span class="keyword">BY</span> codsuc,compania <span class="keyword">ORDER</span> <span class="keyword">BY</span> codsuc;
+</span></code><br /></pre>
+
+	<a name="Tabla-de-usuarios-o-trabajadores"></a>
+<h2 >Tabla de usuarios o trabajadores<a href="#Tabla-de-usuarios-o-trabajadores" class="wiki-anchor">&para;</a></h2>
+
+
+	<p>Esta tabla guarda no solo las características del usuario, sino también su id único de formato>nombre_apellido> el cual es usado en todas las aplicaciones futuras por ejemplo, la mensajería.</p>
+
+
+<pre><code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers"> 1</span><span class="class">DROP</span> <span class="type">TABLE</span> <span class="keyword">IF</span> <span class="keyword">EXISTS</span> public.sysasis_fichas ;
+<span class="line-numbers"> 2</span><span class="class">DROP</span> <span class="type">TABLE</span> <span class="keyword">IF</span> <span class="keyword">EXISTS</span> public.sysasis_ficha ;
+<span class="line-numbers"> 3</span><span class="class">CREATE</span> <span class="type">TABLE</span> sysasis_ficha
+<span class="line-numbers"> 4</span>(
+<span class="line-numbers"> 5</span>  cod_ficha      <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span>, <span class="comment">-- para el futuro es apellido+inicialnombre (prietol)</span>
+<span class="line-numbers"> 6</span>  ide_sesion     <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="keyword">NOT</span> <span class="predefined-constant">NULL</span> <span class="directive">DEFAULT</span> <span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>, <span class="comment">-- nombre session ser igual al sistema mensajeria</span>
+<span class="line-numbers"> 7</span>  cod_perfil     <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="predefined-constant">NULL</span> <span class="directive">DEFAULT</span> <span class="string"><span class="delimiter">'</span><span class="content">001</span><span class="delimiter">'</span></span>, <span class="comment">--  para futuro perfil asociado</span>
+<span class="line-numbers"> 8</span>  cod_admin      <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="predefined-constant">NULL</span> <span class="directive">DEFAULT</span> <span class="predefined-constant">NULL</span>, <span class="comment">-- para futuro responsabilidad a que responde</span>
+<span class="line-numbers"> 9</span>  cod_clave      <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>, <span class="comment">--  para futuro, clave para iniciar session</span>
+<span class="line-numbers"><strong>10</strong></span>  cod_nomina     <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- nomina a la que pertenece si hay varias manejadas sitintas</span>
+<span class="line-numbers">11</span>  cod_responsable <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>, <span class="comment">-- responsable social o codigo empresa codsuc a que le trabaja</span>
+<span class="line-numbers">12</span>  cod_geren      <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="predefined-constant">NULL</span>, <span class="comment">--  para futuro gerencia a que responde</span>
+<span class="line-numbers">13</span>  cod_departamento <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="predefined-constant">NULL</span> <span class="comment">-- codigo codvp o departamento en que trabaja</span>
+<span class="line-numbers">14</span>  cod_grupo      <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- region en la cual labora del pais</span>
+<span class="line-numbers">15</span>  cod_lugar      <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- codigo del lugar de trabajo del vict.. err digo trabajador/usuario</span>
+<span class="line-numbers">16</span>  cod_cargo      <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- codigo del cargo que ostenta la vict.. err digo trabajador/usuario</span>
+<span class="line-numbers">17</span>  cod_cuenta     <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- numero de cuenta nomina del trabajador</span>
+<span class="line-numbers">18</span>  cod_cuentaex   <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- numero de cuenta extra si tiene otro</span>
+<span class="line-numbers">19</span>  cod_rif        <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- rif personal si aplica</span>
+<span class="line-numbers"><strong>20</strong></span>  des_nombre     <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- ambos nombres del usuario o trabajador</span>
+<span class="line-numbers">21</span>  des_apellido   <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- ambos apellidos del usuarios o trabajador</span>
+<span class="line-numbers">22</span>  des_direccion  <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- direccion del trabajador para emergencias en caso suceso</span>
+<span class="line-numbers">23</span>  des_sexo       <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- sexo lamentablemente viene en forma descriptiva en vez codigo</span>
+<span class="line-numbers">24</span>  des_estado     <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- lamentable viene descrito como &quot;Inactivo&quot; &quot;Activo&quot; etc...</span>
+<span class="line-numbers">25</span>  des_jornada    <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- tjornada campo combinado de otros de la db de nomina</span>
+<span class="line-numbers">26</span>  des_otro       <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- campo extra para uso adicional si es necesario</span>
+<span class="line-numbers">27</span>  des_primaria   <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- campo extra para uso futuro reservado</span>
+<span class="line-numbers">28</span>  des_secundaria <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- campo extra para uso futuro reservado</span>
+<span class="line-numbers">29</span>  des_id         <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- cedula o licencia, identificacion en su pais en Vnzla es V-1423423</span>
+<span class="line-numbers"><strong>30</strong></span>  fec_nacimiento <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- fecha en que ingreso a la organizacion</span>
+<span class="line-numbers">31</span>  fec_ingreso    <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- fecha en que ingreso a la organizacion</span>
+<span class="line-numbers">32</span>  fec_retiro     <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- fecha en que se retiro, es cuando se va de la empresa</span>
+<span class="line-numbers">33</span>  fec_fincontrato <span class="predefined-type">VARCHAR</span>(<span class="integer">80</span>) <span class="predefined-constant">NULL</span>,  <span class="comment">-- fecha en que se terminaba sus obligaciones con la empresa</span>
+<span class="line-numbers">34</span>  fec_actualizacion <span class="predefined-type">DATE</span> <span class="predefined-constant">NULL</span> <span class="directive">DEFAULT</span> <span class="predefined">now</span>(), <span class="comment">-- fecha en que se altero los datos de esta tabla ultima vez</span>
+<span class="line-numbers">35</span>  cod_usuasys    <span class="predefined-type">VARCHAR</span>(<span class="integer">20</span>) <span class="predefined-constant">NULL</span> <span class="directive">DEFAULT</span> <span class="string"><span class="delimiter">'</span><span class="content">systemas</span><span class="delimiter">'</span></span>, <span class="comment">-- codigo/usuario que altero los datos ultima vez</span>
+<span class="line-numbers">36</span>  <span class="directive">PRIMARY</span> <span class="type">KEY</span> (cod_ficha, ide_sesion) );
+</span></code></pre>
+
+<pre><code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers"> 1</span><span class="class">INSERT</span> 
+<span class="line-numbers"> 2</span>    <span class="class">INTO</span> sysasis_ficha
+<span class="line-numbers"> 3</span>        ( 
+<span class="line-numbers"> 4</span>        cod_ficha,ide_sesion,cod_perfil,
+<span class="line-numbers"> 5</span>        cod_admin,cod_clave,
+<span class="line-numbers"> 6</span>        cod_nomina,cod_responsable,cod_geren,
+<span class="line-numbers"> 7</span>        cod_departamento,cod_grupo,
+<span class="line-numbers"> 8</span>        cod_lugar,cod_cargo,cod_cuenta,cod_cuentaex,cod_rif,
+<span class="line-numbers"> 9</span>        des_nombre,des_apellido,des_direccion,
+<span class="line-numbers"><strong>10</strong></span>        des_sexo, des_estado,
+<span class="line-numbers">11</span>        des_jornada,des_id, 
+<span class="line-numbers">12</span>        fec_nacimiento, fec_ingreso, fec_retiro, fec_fincontrato
+<span class="line-numbers">13</span>        ) 
+<span class="line-numbers">14</span>    <span class="class">SELECT</span> 
+<span class="line-numbers">15</span>        consol.ficha,username,<span class="string"><span class="delimiter">'</span><span class="content">998</span><span class="delimiter">'</span></span>,
+<span class="line-numbers">16</span>        <span class="predefined-constant">NULL</span>, mesg.password,
+<span class="line-numbers">17</span>        consol.tipnom,consol.codsuc,<span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>,
+<span class="line-numbers">18</span>        consol.codvp,<span class="string"><span class="delimiter">'</span><span class="delimiter">'</span></span>,
+<span class="line-numbers">19</span>        consol.codger,consol.codcar,consol.ncuenta,<span class="predefined-constant">NULL</span>,<span class="predefined-constant">NULL</span>,<span class="predefined-constant">NULL</span>,
+<span class="line-numbers"><strong>20</strong></span>        consol.nombres,consol.apellidos,<span class="predefined-constant">NULL</span>,
+<span class="line-numbers">21</span>        consol.sexo,consol.estado,
+<span class="line-numbers">22</span>        consol.tjornada,consol.cedula,
+<span class="line-numbers">23</span>        consol.fnacimiento,consol.fingreso,consol.fretiro,consol.fincontrato
+<span class="line-numbers">24</span>      <span class="keyword">FROM</span> consolidadoespecial <span class="keyword">AS</span> consol
+<span class="line-numbers">25</span>      <span class="keyword">LEFT</span> <span class="keyword">JOIN</span> users <span class="keyword">AS</span> mesg 
+<span class="line-numbers">26</span>        <span class="keyword">ON</span> (consol.ficha=mesg.password)
+<span class="line-numbers">27</span>      <span class="keyword">WHERE</span> consol.ficha <span class="keyword">NOT</span> <span class="keyword">LIKE</span> <span class="string"><span class="delimiter">'</span><span class="content">%X%</span><span class="delimiter">'</span></span>
+<span class="line-numbers">28</span>      <span class="keyword">ORDER</span> <span class="keyword">BY</span> consol.ficha
+</span></pre></code>
+
+	<a name="Salida-de-creacion-del-proceso"></a>
+<h4 >Salida de creacion del proceso:<a href="#Salida-de-creacion-del-proceso" class="wiki-anchor">&para;</a></h4>
+
+
+	<p><strong>NOTA:</strong> se debe filtrar ciertos usuarios como el '81981937' el cual tiene dos sesiones de mensageria.<br /><pre><code class="sql syntaxhl"><span class="CodeRay"><span class="line-numbers">1</span>NOTICE:  <span class="type">table</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">sysasis_ficha</span><span class="delimiter">&quot;</span></span> does <span class="keyword">not</span> exist, skipping
+<span class="line-numbers">2</span>NOTICE:  <span class="class">CREATE</span> <span class="type">TABLE</span> / <span class="directive">PRIMARY</span> <span class="type">KEY</span> will <span class="class">create</span> implicit <span class="type">index</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">sysasis_ficha_pkey</span><span class="delimiter">&quot;</span></span> <span class="keyword">for</span> <span class="type">table</span> <span class="string"><span class="delimiter">&quot;</span><span class="content">sysasis_ficha</span><span class="delimiter">&quot;</span></span> 
+<span class="line-numbers">3</span>Query returned successfully: <span class="integer">34716</span> rows affected, <span class="integer">756</span> ms execution <span class="predefined-type">time</span>.
+</span></code><pre></p></pre></pre></pre>
+</body>
+</html>

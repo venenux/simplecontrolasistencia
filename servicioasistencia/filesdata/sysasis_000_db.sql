@@ -1,3 +1,68 @@
+﻿
+-- tabla fuente, exportacion desde nomina, si se requiere, 
+-- esta tabla es una fuente, de la cual se sacan datos 
+-- desde otros sistemas de nomina
+DROP TABLE IF EXISTS consolidadoespecial;
+CREATE TABLE IF NOT EXISTS consolidadoespecial
+(
+    ficha         VARCHAR(60) NOT NULL,
+    cedula        VARCHAR(60) NULL,
+    apenom        VARCHAR(60) NULL,
+    apenomc       VARCHAR(60) NULL,
+    nombres       VARCHAR(60) NULL,
+    apellidos     VARCHAR(60) NULL,
+    compania      VARCHAR(60) NULL,
+    gerencia      VARCHAR(60),
+    departamento  VARCHAR(60) NULL, -- antiguamete "unidad" 
+    ubicacion     VARCHAR(60) NULL,
+    fnacimiento   VARCHAR(60) NULL,
+    sexo          VARCHAR(60) NULL,
+    modalidad     VARCHAR(60) NULL,
+    codcar        VARCHAR(60) NULL,
+    cargo         VARCHAR(60) NULL,
+    sueldo        VARCHAR(60) NULL,
+    estado        VARCHAR(60) NULL,
+    vacaciones    VARCHAR(60) NULL,
+    suspendido    VARCHAR(60) NULL,
+    fingreso      VARCHAR(60) NULL,
+    fretiro       VARCHAR(60) NULL,
+    fincontrato   VARCHAR(60) NULL,
+    tjornada      VARCHAR(60) NULL,
+    fcobro        VARCHAR(60) NULL,
+    ncuenta       VARCHAR(60) NULL,
+    turno         VARCHAR(60) NULL,
+    nomina        VARCHAR(60) NULL,
+    grupo         VARCHAR(60) NULL,
+    tipnom        VARCHAR(60) NULL,
+    codvp         VARCHAR(60) NULL,
+    codger        VARCHAR(60) NULL,
+    coddep        VARCHAR(60) NULL,
+    coddir        VARCHAR(60) NULL,
+    codsuc        VARCHAR(60) NULL,
+    PRIMARY KEY (ficha)
+);
+
+
+DROP TABLE IF EXISTS public.sysasis_fichas ;
+CREATE TABLE sysasis_fichas
+(
+  cod_ficha VARCHAR(20) NOT NULL, -- para el futuro es apellido+inicialnombre (prietol)
+  ide_sesion VARCHAR(80) NOT NULL, -- nombre session que debe ser igual al sistema d emensajeria
+  cod_perfil VARCHAR(20) NULL, -- para futuro perfil asociado
+  cod_geren VARCHAR(20) NULL, -- para futuro gerencia a que responde
+  cod_admin VARCHAR(20) NULL, -- para futuro responsabilidad a que responde
+  cod_clave VARCHAR(80) NULL, -- para futuro, clave para iniciar session
+  des_nombre VARCHAR(80) NULL,
+  des_apellido VARCHAR(80) NULL,
+  fec_actualizacion DATE NULL DEFAULT now(), -- fecha en que se altero los datos de esta tabla por ultima vez
+  cod_usuasys VARCHAR(20) NULL DEFAULT 'systemas', -- codigo/usuario que altero los datos por ultima vez
+  PRIMARY KEY (ide_sesion) );
+  
+
+
+
+/*************************************/
+
 --
 -- TOC entry 175 (class 1259 OID 68413)
 -- Dependencies: 1957 1958 8
