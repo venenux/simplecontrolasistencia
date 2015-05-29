@@ -6,6 +6,8 @@
  * 
  * This software are permit to copy and modify only if this header copyright
  * its include complety and cited the original author as original maker.
+ *
+ * documentation: https://gitlab.com/mckaygerhard/simplecontrolasistencia/wikis/escanerdedo.c
  */
 
 #include <stdio.h>
