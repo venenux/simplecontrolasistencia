@@ -1,7 +1,7 @@
 Simple Control de Asistencia
 ============================
 
-New Web PAge: https://gitlab.com/mckaygerhard/simplecontrolasistencia/wikis/home
+**PROJECT MOVED TO https://savannah.nongnu.org/projects/simpleasys/ IN NEAR FUTURE**
 
 Introduccion y descripcion
 --------------------------
