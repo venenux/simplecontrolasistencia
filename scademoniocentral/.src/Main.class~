@@ -1,0 +1,22 @@
+' Gambas class file
+
+
+
+'' hora actual del momento al invocarse un ciclo de importacion/exportacion
+Public horaciclo As String
+'' fecha actual del momento al invocarse un ciclo de importacion/exportacion
+Public fechaactual As String
+'' fecha anterior del dia actual al invocarse un ciclo de importacion/exportacion
+Public fechaanter As String
+
+
+
+
+'' main del programa
+Public Sub Main()
+
+    horaciclo = Format$(Now, "hh:nn:ss")
+    fechaanter = Val(Format$(Now, "yyyymmdd")) - 1
+    fechaactual = Format$(Now, "yyyymmdd")
+
+End

@@ -1,0 +1,18 @@
+# Gambas Project File 3.0
+# Compiled with Gambas 3.4.0
+Title=scademoniocentral
+Startup=Main
+Version=0.0.1
+Component=gb.image
+Component=gb.gui
+Component=gb.form
+Component=gb.db
+Component=gb.db.form
+Component=gb.settings
+Component=gb.vb
+TabSize=4
+Translate=1
+Language=es_VE.UTF-8
+ControlPublic=1
+ModulePublic=1
+Packager=1

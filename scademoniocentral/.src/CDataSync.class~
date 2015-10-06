@@ -1,0 +1,103 @@
+' Gambas class file
+
+' Private preserve_times As String = " -t"        ' * preservar las fechas del archivo original
+' Private preserve_perms As String = " -p"        ' * preservar permisos del archivo original
+' Private preserve_group As String = " -g"        ' * preservar grupo comun del archivo original
+' Private ejecutar_detal As String = " -v"        ' * ejecutar detallado, para revision de fallos
+' Private ejecutar_limpi As String = " -q"        ' * ejecutar silencioso y sin muchas lineas
+' Private ejecutar_compr As String = " -z"        ' * ejecutar envios comprimidos en la red
+' Private progreso_mostr As String = " --progress" ' mostrar progreso de cada archivo si va por red
+' Private progreso_parci As String = " --partial" ' dejar el archivo si no se completo
+' Private deleteon_desti As String = " --delete"  ' borrar archivos en el destino (no recomendado)
+Public limitebw As String = 20           ' opcion para limitar trafico
+Public portserv As Integer = 14538        ' numero del puerto por defecto al que se conectar u/o correra el demonio
+
+Private cmdrsync As String = "/usr/bin/rsync" ' commando a correr rsync
+Private cmdrstar As String
+Private cmdrstop As String
+Private numberfs As Integer
+
+Private filelock As String = "/tmp/simpleasisrsyncd.lock"
+Private filedpid As String = "/tmp/simpleasisrsyncd.pid"
+Private namefsec As String = ".simpleasisrsyncd.secrets" 
+Private namefcfg As String = ".simpleasisrsyncd.conf" 
+Private nameflog As String = ".simpleasisrsyncd.log" 
+Private nameuser As String = "sysasis"
+Private pathfile As String = User.Home & "/"
+
+Private configurado As Boolean = False      ' semaforo de configuracion
+
+Public Sub _new()
+    Randomize
+End
+
+
+'' Esta función determina si existe permiso de lectura en la ruta dada 
+Public Function FSLectura(ruta As String) As Boolean
+    Return Access(ruta, gb.Read)
+    Catch
+        Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+        Return False
+End
+
+'' Esta función determina si existe permiso de escritura en la ruta dada 
+Public Function FSEscritura(ruta As String) As Boolean
+    Return Access(ruta, gb.Write)
+    Catch
+        Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+        Return False
+End
+
+'' configuracion automatica de servicios, la clave inicialmente esta en "" o vacia
+Public Sub confDaemons() As Integer
+
+    Dim f1 As File
+    Dim archivo As String = User.Home & "/" & namefcfg
+    numberfs = Int(Rnd(10000, 70000))
+    filelock = "/tmp/simpleasisrsyncd" & numberfs & ".lock"
+    filedpid = "/tmp/simpleasisrsyncd" & numberfs & ".pid"
+
+    ' configuracin del comando simplificada, which esta en todos los linux
+    Shell "which rsync 2>&1" To cmdrsync ' si el comando existe tiene un retorno de carro
+    cmdrsync = Replace$(cmdrsync, Chr$(10), "") ' removiendo fin de linea
+    cmdrsync = Replace$(cmdrsync, Chr$(13), "") ' removiendo retorno de carro
+    If Not Exist(cmdrsync) Then
+        Return 1
+    Endif
+
+    ' configuracion del archivo de definicion del rsync (recepcion/revision)
+    If FSEscritura(User.home) Then ' si se puede escribir en la ruta, escribe el archivo
+        f1 = Open archivo For Write Create    'si no existe crea, si existe sobrescribe
+        Print #f1, "lock file = " & filelock
+        Print #f1, "pid file = " & filedpid
+        Print #f1, "Max connections = 100"  ' hay maximo 86 tiendas en el 2011, hoy 34
+        Print #f1, ""
+        Print #f1, "[sysasismod]"
+        Print #f1, "     path = " & User.Home & "/Www/"
+        Print #f1, "     use chroot = false"
+        Print #f1, "     comment = sysasis"
+        Print #f1, "     uid = nobody"
+        Print #f1, "     gid = nobody"
+        Print #f1, "     read only = yes"
+        Print #f1, "     list = yes"
+        'Print #f1, "     auth users = " & nameuser_rsync
+        'Print #f1, "     secrets file = " & pathfile_files & namefile_secre
+        Close #f1
+    End If
+    
+    If Not Exist(archivo) Then
+        Return 2
+    Endif
+
+
+Catch
+    Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
+    Return 255
+    
+    ' commando_daemon_start = "/sbin/start-stop-daemon --start --quiet --oknodo  --pidfile " & fileopid_daemo & " --exec " & cmdrsync & " -- " & daemo & port & limit & filec & filel
+    ' commando_daemon_stop = "/sbin/start-stop-daemon --stop  --quiet --oknodo  --pidfile " & fileopid_daemo & " --exec " & cmdrsync & " --retry 3 -- " & daemo & port & limit & filec & filel
+    ' Return 0
+
+End
+
+
