@@ -20,5 +20,7 @@ Public Sub Main()
     horaciclo = Format$(Now, "hh:nn:ss")
     fechaanter = Val(Format$(Now, "yyyymmdd")) - 1
     fechaactual = Format$(Now, "yyyymmdd")
+    
+    Message.Info("Probar como: rsync -z -t -g -p --port=14538 -v rsync://sysasis@localhost/sysasismod/ ")
 
 End

@@ -29,6 +29,7 @@ Private configurado As Boolean = False      ' semaforo de configuracion
 
 Public Sub _new()
     Randomize
+    numberfs = Int(Rnd(10000, 70000))
 End
 
 
@@ -52,8 +53,8 @@ End
 Public Sub confDaemons() As Integer
 
     Dim f1 As File
-    Dim archivo As String = User.Home & "/" & namefcfg
-    numberfs = Int(Rnd(10000, 70000))
+    namefcfg = User.Home & "/" & namefcfg
+    namefsec = User.Home & "/" & namefsec
     filelock = "/tmp/simpleasisrsyncd" & numberfs & ".lock"
     filedpid = "/tmp/simpleasisrsyncd" & numberfs & ".pid"
 
@@ -67,7 +68,7 @@ Public Sub confDaemons() As Integer
 
     ' configuracion del archivo de definicion del rsync (recepcion/revision)
     If FSEscritura(User.home) Then ' si se puede escribir en la ruta, escribe el archivo
-        f1 = Open archivo For Write Create    'si no existe crea, si existe sobrescribe
+        f1 = Open namefcfg For Write Create    'si no existe crea, si existe sobrescribe
         Print #f1, "lock file = " & filelock
         Print #f1, "pid file = " & filedpid
         Print #f1, "Max connections = 100"  ' hay maximo 86 tiendas en el 2011, hoy 34
@@ -84,20 +85,45 @@ Public Sub confDaemons() As Integer
         'Print #f1, "     secrets file = " & pathfile_files & namefile_secre
         Close #f1
     End If
-    
-    If Not Exist(archivo) Then
+
+    If Not Exist(namefcfg) Then
         Return 2
     Endif
 
+    ' creacion de archivo de usuarios y sus claves
+    If FSEscritura(User.home) Then      ' verificar si hay se puede escribir en la ruta
+        f1 = Open namefsec For Write Create     'abrir, si no existe se crea, si existe se sobrescribe
+        Print #f1, nameuser & ":" & nameuser & ".1"
+        Close #f1
+    End If
+
+    If Not Exist(namefsec) Then
+        Return 2
+    Endif
+    Shell "chmod 600 " & namefsec
+
+    cmdrstar = "/sbin/start-stop-daemon --start --quiet --oknodo  --pidfile " & filedpid & " --exec " & cmdrsync & " --  --daemon --port=" & portserv & " --log-file=" & nameflog & " --config=" & namefcfg & " --bwlimit=" & limitebw
+    cmdrstop = "/sbin/start-stop-daemon --stop  --quiet --oknodo  --pidfile " & filedpid & " --exec " & cmdrsync & " --retry 3 --  --daemon --port=" & portserv & " --log-file=" & nameflog & " --config=" & namefcfg & " --bwlimit=" & limitebw
+
+    If Exist(filedpid) Then
+        Shell "cat " & filedpid & " 2>&1" To cmdrsync
+        Shell cmdrstop 
+        ' Wait 2                      ' el script tarda un poco y hay que esperar termine el demonio
+        ' Exec ["kill", "-9", wline] For Read
+        If Exist(filedpid) Then
+            Print "matando demonio extra (en lo posible).. intentando matar " & cmdrsync
+'             Shell "rm -f " & filedpid
+        Endif
+    Else
+        Shell cmdrstar
+    Endif
+
+    configurado = True
 
 Catch
     Debug ("ERROR-> [ " & DConv(Error.Text) & " ] ")
     Return 255
     
-    ' commando_daemon_start = "/sbin/start-stop-daemon --start --quiet --oknodo  --pidfile " & fileopid_daemo & " --exec " & cmdrsync & " -- " & daemo & port & limit & filec & filel
-    ' commando_daemon_stop = "/sbin/start-stop-daemon --stop  --quiet --oknodo  --pidfile " & fileopid_daemo & " --exec " & cmdrsync & " --retry 3 -- " & daemo & port & limit & filec & filel
-    ' Return 0
-
 End
 
 

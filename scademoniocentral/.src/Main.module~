@@ -16,8 +16,11 @@ Public fechaanter As String
 Public Sub Main()
 
     Dim pepe As CDataSync = New CDataSync
+    pepe.confDaemons
     horaciclo = Format$(Now, "hh:nn:ss")
     fechaanter = Val(Format$(Now, "yyyymmdd")) - 1
     fechaactual = Format$(Now, "yyyymmdd")
+    
+    Shell "banner rsync -z -t -g -p --port=14538 -v rsync://sysasis@170.10.12.113/sysasismod/ "
 
 End
