@@ -1,8 +1,6 @@
 Simple Control de Asistencia
 ============================
 
-**PROJECT MOVED TO https://savannah.nongnu.org/projects/simpleasys/ IN NEAR FUTURE**
-
 Introduccion y descripcion
 --------------------------
 
