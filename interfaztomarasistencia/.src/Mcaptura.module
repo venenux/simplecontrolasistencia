@@ -124,10 +124,15 @@ Public Sub funcionando_escaner()
             comd = User.Home & "/devel/simplecontrolasistencia/escanerdedo/escanerdedo"
             If Not Exist(comd) Then
                 comd = scanerdedocmd & "cmd"  ' en ultima instancia tomo el ultimo compilado sin limpiar de aqui
-            Else
-                Message.Error("El software de escaneo, no esta instalado, ¿se apago la maquina mal? ¿se instalo el software mal?")
-                est_app_asis = 4 ' hay libreria de gestion de scaners, pero no hay comando backend
-                FMain.datos.setModoVerificado("cara")
+                If Not Exist(comd) Then
+                    Message.Error("El software de escaneo, no esta instalado, Si ud esta desarrollando deje la flojera y corra el codigo por pasos\n<br> el error esta en que debe compilar y colocarlo donde la linea de codigo que saca este mensage lo busca")
+                    est_app_asis = 4 ' hay libreria de gestion de scaners, pero no hay comando backend
+                    FMain.datos.setModoVerificado("cara")
+                Else
+                    Message.Error("El software de escaneo, no esta instalado, ¿se apago la maquina mal? ¿se instalo el software mal?")
+                    est_app_asis = 4 ' hay libreria de gestion de scaners, pero no hay comando backend
+                    FMain.datos.setModoVerificado("cara")
+                Endif
             Endif
         Endif
     Else
