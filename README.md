@@ -27,18 +27,23 @@ En la wiki, tambien resumido en este archivo:
 
 Main laguaje are spanish/Lenguaje principal es español.
 
-* https://gitlab.com/mckaygerhard/simplecontrolasistencia/wikis/home
+* [docs/README.md] (docs/README.md)
 
-LEER COMPLETO EL ENLACE ANTES DE SEGUIR.
-
-
-Requeriments, instrucciones:
+Instrucciones de Desarrollo
 --------------------------
 
-Estan en la wiki, tambien un resumen al final de este archivo:
+Para usar el gui en gambas3 (scanersimplegui.class ) :
 
-* https://gitlab.com/mckaygerhard/simplecontrolasistencia/wikis/Requerimientos-Requeriments
+1. `mkdir ~/Devel & cd ~/Devel`
+2. `git clone https://github.com/venenux/simplecontrolasistencia.git; cd simplecontrolasistencia` 
+3. `aptitude install gambas3`
+4. abra el ide `gambas3`
+5. busque el proyecto, esto solo con encontrar el directorio donde descargo este fuente
+6. revise el codigo, debe cambiar la ruta del ejecutable en la funcion "scan_dedo_imagen" 
+6.1. cambielo por la ruta exacta donde esta el compilado anterior de c
+7. en "proyecto" puede generar un tarbal o ejecutable gambas
 
+**NOTA:** para usar el captahuella se requiere el subdirectorio `scanerdedo` tener compilado el ejecutable, para mas informacion acerca del programa que capta la huella `scanerdedo` visite el proyecto https://github.com/venenux/scanersimple
 
 Caracteristicas
 ---------------
@@ -68,6 +73,8 @@ Linea de comandos, actua como capturador de la huella dactilar,
 es el principal componente, si bien no el mas usable y comodo; 
 captura la huella, asi como verifica la misma, esto siempre 
 informa de las operaciones realizadas a la salida estandar de error.
+Para mas informacion visite el proyecto original https://github.com/venenux/scanersimple 
+del cual se basa este pequeño programa `scanerdedo`.
 
 2) interfaztomarasistencia
 
